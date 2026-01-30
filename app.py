@@ -1,5 +1,6 @@
 import streamlit as st
 import logic # 引入我们的大脑
+import plotly.graph_objects as go # 记得在文件最上面加这一行
 
 # 1. 页面基础设置 (必须是第一行)
 st.set_page_config(
@@ -125,15 +126,22 @@ with tab1:
         # 3. 提交按钮
         submitted = st.form_submit_button("🚀 生成体质报告", type="primary")
         
-        if submitted:
-            # 调用算分函数
-            result_scores = logic.calculate_score(st.session_state, df_questions)
+        # ... (前面的代码不变) ...
+
+    if submitted:
+        with st.spinner("正在接入赛博算力网络..."):
+            # 1. 加载数据
+            df_questions, df_types = logic.load_data()
             
-            # 存入 Session，这样切换 Tab 数据不会丢
-            st.session_state["quiz_result"] = result_scores
-            
-            st.success("✅ 数据解算完成！请点击顶部的 [专属体质报告] 查看结果。")
-            st.balloons()
+            if df_questions is not None:
+                # 2. 计算结果
+                result = logic.calculate_results(st.session_state, df_questions, df_types)
+                st.session_state["result"] = result # 存入 session
+                
+                st.success("✅ 数据解算完成！请点击顶部的 [专属体质报告] 查看结果。")
+                st.balloons()
+            else:
+                st.error("数据库连接失败 (Excel not found)")
 
 # --- 模块 2: 视觉区 ---
 with tab2:
@@ -146,23 +154,99 @@ with tab2:
         st.image(uploaded_file, caption="样本采集成功", width=300)
 
 # --- 模块 3: 结果区 ---
+
+
+# ...
+
 with tab3:
-    if "quiz_result" in st.session_state:
-        st.subheader("📊 您的赛博体质雷达")
+    if "result" in st.session_state:
+        res = st.session_state["result"]
+        info = res["user_info"]
+        badge = res["social_badge"]
         
-        # 获取分数
-        scores = st.session_state["quiz_result"]
+        # --- 第一层：社交面具 (The Badge) ---
+        st.markdown(f"### 🛡️ 你的赛博体质: 【{info['type_code']} · {info['type_name']}】")
         
-        # 找出得分最高的体质 (简单版判断)
-        max_type = max(scores, key=scores.get)
-        max_score = scores[max_type]
+        # 判词卡片
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; border-left: 5px solid #00FFC8; margin-bottom: 20px;">
+            <p style="color: #00FFC8; font-size: 1.2em; font-family: 'Songti SC';">“{badge['poem']}”</p>
+            <p style="color: #aaa; font-size: 0.9em;">—— {badge['slogan']}</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        st.metric(label="主导判定", value=f"{max_type}质", delta=f"得分: {max_score}")
+        # 角色说明
+        col_img, col_desc = st.columns([1, 2])
+        with col_img:
+            # 这里将来可以放对应的 AI 插画
+            st.image("https://api.dicebear.com/9.x/notionists/svg?seed=" + info['type_code'], caption="PBTI 印象")
+        with col_desc:
+            st.write(f"**🔩 出厂设置**")
+            st.caption(badge['factory_setting'])
+            st.write(f"**⚠️ 系统 Bug**")
+            for bug in badge['bug_warning']:
+                st.error(bug) # 用红色报错条显示 Bug，很有感觉
+
+        st.divider()
+
+        # --- 第二层：客观说明书 (The Manual) ---
+        st.subheader("📊 系统参数面板")
         
-        # 显示所有分数 (临时)
-        st.json(scores)
+        # 1. 雷达图 (Plotly)
+        radar_data = res["radar_chart"]
+        categories = ['寒','热','虚','实','燥','湿','郁','瘀']
+        values = [radar_data['cold'], radar_data['heat'], radar_data['void'], radar_data['solid'], 
+                  radar_data['dry'], radar_data['wet'], radar_data['qi'], radar_data['blood']]
         
-        st.info("💡 提示：更详细的雷达图和调理方案正在开发中...")
+        fig = go.Figure()
+        fig.add_trace(go.Scatterpolar(
+            r=values,
+            theta=categories,
+            fill='toself',
+            name=info['type_name'],
+            line_color='#00FFC8'
+        ))
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+            paper_bgcolor='rgba(0,0,0,0)', # 透明背景
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color="white",
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
         
+        # 2. 双向能量条
+        st.write("**⚡ 能量对抗监测**")
+        for bar in res["energy_bars"]:
+            # 使用 Streamlit 原生滑块模拟进度条 (禁用状态)
+            st.write(f"{bar['left']} ⟵ VS ⟶ {bar['right']}")
+            st.slider(
+                label="hidden", 
+                min_value=-100, max_value=100, value=int(bar['val']), 
+                disabled=True, 
+                key=bar['label']
+            )
+
+        st.divider()
+
+        # --- 第三层：行动指南 (The Action) ---
+        st.subheader("🚀 调优方案 (v1.0 Patch)")
+        
+        ac_col1, ac_col2, ac_col3 = st.columns(3)
+        with ac_col1:
+            st.success("**Keep 保持**")
+            for item in res['action_guide']['keep']:
+                st.write(f"✅ {item}")
+        
+        with ac_col2:
+            st.warning("**Stop 停止**")
+            for item in res['action_guide']['stop']:
+                st.write(f"🛑 {item}")
+                
+        with ac_col3:
+            st.info("**Start 开始**")
+            for item in res['action_guide']['start']:
+                st.write(f"🚀 {item}")
+
     else:
-        st.warning("⚠️ 暂无数据，请先去 [Tab 1] 完成问卷提交。")
+        st.info("👈 请先在左侧完成 [问卷扫描] 以解锁数据")
