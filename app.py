@@ -1,6 +1,7 @@
 import streamlit as st
 import logic # 引入我们的大脑
 import plotly.graph_objects as go # 记得在文件最上面加这一行
+import os # <--- 【修改点1】引入os模块，用于检查本地图片是否存在
 
 # 1. 页面基础设置 (必须是第一行)
 st.set_page_config(
@@ -178,8 +179,18 @@ with tab3:
         # 角色说明
         col_img, col_desc = st.columns([1, 2])
         with col_img:
-            # 这里将来可以放对应的 AI 插画
-            st.image("https://api.dicebear.com/9.x/notionists/svg?seed=" + info['type_code'], caption="PBTI 印象")
+            # === 【修改点2】 本地图片加载逻辑 ===
+            # 尝试查找本地 assets 文件夹下的对应图片 (例如 assets/CVDQ.png)
+            local_img_path = f"assets/{info['type_code']}.png"
+            
+            if os.path.exists(local_img_path):
+                # 找到了本地图片，直接显示
+                st.image(local_img_path, caption=f"PBTI 印象: {info['type_name']}")
+            else:
+                # 没找到，使用 DiceBear 生成的随机赛博头像作为兜底
+                st.image("https://api.dicebear.com/9.x/notionists/svg?seed=" + info['type_code'], caption="PBTI 印象 (Default)")
+            # === 修改结束 ===
+
         with col_desc:
             st.write(f"**🔩 出厂设置**")
             st.caption(badge['factory_setting'])
