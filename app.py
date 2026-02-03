@@ -134,7 +134,9 @@ with tab1:
     with st.form("quiz_form"):
         # 遍历题库，自动生成题目
         for index, row in df_questions.iterrows():
-            st.write(f"**{row['question']}**")
+            # 添加题号显示
+            question_number = index + 1
+            st.write(f"**{question_number}. {row['question']}**")
             # 这里的 key 是关键，用来区分每一道题
             st.radio(
                 "请选择程度:", 
@@ -183,7 +185,17 @@ with tab1:
                     
                     st.success("✅ 数据已同步到赛博数据库！")
                 
-                st.success("✅ 数据解算完成！请点击顶部的 [专属体质报告] 查看结果。")
+                st.success("✅ 数据解算完成！")
+                
+                # 添加直接跳转到体质报告的按钮
+                st.markdown("### 🚀 查看您的体质报告")
+                st.info("👇 点击下方按钮查看详细体质分析报告")
+                
+                if st.button("🔮 点击查看体质报告", type="primary", use_container_width=True):
+                    # 设置session_state标记，切换到体质报告标签页
+                    st.session_state["active_tab"] = "体质报告"
+                    st.rerun()
+                
                 st.balloons()
             else:
                 st.error("数据库连接失败 (Excel not found)")
@@ -317,145 +329,200 @@ with tab3:
     else:
         st.info("👈 请先在左侧完成 [问卷扫描] 以解锁数据")
 
-# --- 模块 4: 数据管理区 ---
+# --- 模块 4: 数据管理区 (管理员专用) ---
 with tab4:
-    st.header("📊 赛博数据中心")
-    st.markdown("*管理和导出您收集的体质数据*")
+    st.header("� 赛博数据中心")
+    st.markdown("*管理员专用 - 管理和导出体质数据*")
     
-    # 数据统计概览
-    st.subheader("📈 数据概览")
+    # 初始化管理员登录状态
+    if "admin_logged_in" not in st.session_state:
+        st.session_state["admin_logged_in"] = False
     
-    try:
-        stats = database.get_statistics()
+    # 如果未登录，显示密码输入界面
+    if not st.session_state["admin_logged_in"]:
+        st.warning("⚠️ 此功能需要管理员权限")
         
-        col1, col2, col3 = st.columns(3)
+        admin_password = st.text_input("请输入管理员密码", type="password", placeholder="默认密码: 8888")
+        
+        col1, col2 = st.columns([1, 3])
         with col1:
-            st.metric("👥 总用户数", stats['total_users'])
+            if st.button("🔓 登录", type="primary"):
+                if database.verify_admin_password(admin_password):
+                    st.session_state["admin_logged_in"] = True
+                    st.success("✅ 登录成功！")
+                    st.rerun()
+                else:
+                    st.error("❌ 密码错误")
+        
+        st.info("💡 提示：默认密码为 8888，登录后可在设置中修改")
+    
+    # 如果已登录，显示数据管理内容
+    else:
+        # 显示登出按钮和修改密码选项
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("🚪 退出登录"):
+                st.session_state["admin_logged_in"] = False
+                st.rerun()
         with col2:
-            st.metric("📝 总问卷数", stats['total_questionnaires'])
-        with col3:
-            st.metric("📅 今日新增", stats['today_count'])
-        
-        # 体质类型分布
-        if stats['type_distribution']:
-            st.subheader("🧬 体质类型分布")
-            
-            # 创建体质分布数据
-            type_data = pd.DataFrame(stats['type_distribution'])
-            
-            # 显示分布图表
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=type_data['type_name'],
-                    y=type_data['count'],
-                    marker_color='#00FFC8'
-                )
-            ])
-            fig.update_layout(
-                title="体质类型统计",
-                xaxis_title="体质类型",
-                yaxis_title="数量",
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font_color="white"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # 显示详细数据表
-            st.dataframe(type_data, use_container_width=True)
-        
-        # 数据查询功能
-        st.subheader("🔍 数据查询")
-        
-        # 搜索选项
-        search_col1, search_col2, search_col3 = st.columns(3)
-        with search_col1:
-            search_nickname = st.text_input("按昵称搜索", "")
-        with search_col2:
-            search_type = st.selectbox("按体质类型", ["全部"] + [t['type_code'] for t in stats['type_distribution']])
-        with search_col3:
-            date_range = st.date_input("日期范围", [])
-        
-        # 执行搜索
-        if st.button("🔍 搜索"):
-            start_date = None
-            end_date = None
-            if len(date_range) == 2:
-                start_date = date_range[0].strftime('%Y-%m-%d')
-                end_date = date_range[1].strftime('%Y-%m-%d')
-            
-            type_code = None if search_type == "全部" else search_type
-            
-            results = database.search_questionnaires(
-                nickname=search_nickname if search_nickname else None,
-                type_code=type_code,
-                start_date=start_date,
-                end_date=end_date
-            )
-            
-            if results:
-                st.success(f"找到 {len(results)} 条记录")
-                results_df = pd.DataFrame(results)
-                st.dataframe(results_df, use_container_width=True)
-            else:
-                st.info("未找到匹配的记录")
-        
-        # 数据导出功能
-        st.subheader("💾 数据导出")
-        
-        export_col1, export_col2 = st.columns(2)
-        with export_col1:
-            if st.button("📄 导出为 CSV"):
-                filename = database.export_to_csv()
-                st.success(f"✅ 数据已导出到: {filename}")
+            with st.expander("🔧 修改密码"):
+                current_pwd = st.text_input("当前密码", type="password")
+                new_pwd = st.text_input("新密码", type="password")
+                confirm_pwd = st.text_input("确认新密码", type="password")
                 
-                # 提供下载链接
-                with open(filename, 'rb') as f:
-                    st.download_button(
-                        label="⬇️ 下载 CSV 文件",
-                        data=f,
-                        file_name=filename,
-                        mime='text/csv'
-                    )
+                if st.button("💾 确认修改"):
+                    if not current_pwd or not new_pwd or not confirm_pwd:
+                        st.error("❌ 请填写所有密码字段")
+                    elif new_pwd != confirm_pwd:
+                        st.error("❌ 两次输入的新密码不一致")
+                    elif len(new_pwd) < 4:
+                        st.error("❌ 新密码长度至少为4位")
+                    else:
+                        success, message = database.update_admin_password(current_pwd, new_pwd)
+                        if success:
+                            st.success(f"✅ {message}")
+                            st.info("请使用新密码重新登录")
+                            st.session_state["admin_logged_in"] = False
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
         
-        with export_col2:
-            if st.button("📊 导出为 Excel"):
-                filename = database.export_to_excel()
-                if filename:
+        st.divider()
+        
+        # 数据统计概览
+        st.subheader("📈 数据概览")
+        
+        try:
+            stats = database.get_statistics()
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("👥 总用户数", stats['total_users'])
+            with col2:
+                st.metric("📝 总问卷数", stats['total_questionnaires'])
+            with col3:
+                st.metric("📅 今日新增", stats['today_count'])
+            
+            # 体质类型分布
+            if stats['type_distribution']:
+                st.subheader("🧬 体质类型分布")
+                
+                # 创建体质分布数据
+                type_data = pd.DataFrame(stats['type_distribution'])
+                
+                # 显示分布图表
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=type_data['type_name'],
+                        y=type_data['count'],
+                        marker_color='#00FFC8'
+                    )
+                ])
+                fig.update_layout(
+                    title="体质类型统计",
+                    xaxis_title="体质类型",
+                    yaxis_title="数量",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font_color="white"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # 显示详细数据表
+                st.dataframe(type_data, use_container_width=True)
+            
+            # 数据查询功能
+            st.subheader("🔍 数据查询")
+            
+            # 搜索选项
+            search_col1, search_col2, search_col3 = st.columns(3)
+            with search_col1:
+                search_nickname = st.text_input("按昵称搜索", "")
+            with search_col2:
+                search_type = st.selectbox("按体质类型", ["全部"] + [t['type_code'] for t in stats['type_distribution']])
+            with search_col3:
+                date_range = st.date_input("日期范围", [])
+            
+            # 执行搜索
+            if st.button("🔍 搜索"):
+                start_date = None
+                end_date = None
+                if len(date_range) == 2:
+                    start_date = date_range[0].strftime('%Y-%m-%d')
+                    end_date = date_range[1].strftime('%Y-%m-%d')
+                
+                type_code = None if search_type == "全部" else search_type
+                
+                results = database.search_questionnaires(
+                    nickname=search_nickname if search_nickname else None,
+                    type_code=type_code,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                
+                if results:
+                    st.success(f"找到 {len(results)} 条记录")
+                    results_df = pd.DataFrame(results)
+                    st.dataframe(results_df, use_container_width=True)
+                else:
+                    st.info("未找到匹配的记录")
+            
+            # 数据导出功能
+            st.subheader("💾 数据导出")
+            
+            export_col1, export_col2 = st.columns(2)
+            with export_col1:
+                if st.button("📄 导出为 CSV"):
+                    filename = database.export_to_csv()
                     st.success(f"✅ 数据已导出到: {filename}")
                     
                     # 提供下载链接
                     with open(filename, 'rb') as f:
                         st.download_button(
-                            label="⬇️ 下载 Excel 文件",
+                            label="⬇️ 下载 CSV 文件",
                             data=f,
                             file_name=filename,
-                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                            mime='text/csv'
                         )
-                else:
-                    st.error("❌ 导出失败，请确保已安装 pandas 和 openpyxl")
-        
-        # 显示所有问卷数据
-        st.subheader("📋 所有问卷记录")
-        
-        all_questionnaires = database.get_all_questionnaires(limit=100)
-        if all_questionnaires:
-            df = pd.DataFrame(all_questionnaires)
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("暂无问卷数据")
-        
-        # 数据库信息
-        st.subheader("🗄️ 数据库信息")
-        
-        db_info = database.get_database_info()
-        if db_info:
-            st.write(f"**数据库文件**: {db_info['file_path']}")
-            st.write(f"**文件大小**: {db_info['file_size']}")
-            st.write(f"**数据表**: {', '.join(db_info['tables'])}")
-        else:
-            st.info("数据库文件不存在")
             
-    except Exception as e:
-        st.error(f"❌ 数据加载失败: {e}")
-        st.info("💡 提示：如果数据库为空，请先完成一些问卷")
+            with export_col2:
+                if st.button("📊 导出为 Excel"):
+                    filename = database.export_to_excel()
+                    if filename:
+                        st.success(f"✅ 数据已导出到: {filename}")
+                        
+                        # 提供下载链接
+                        with open(filename, 'rb') as f:
+                            st.download_button(
+                                label="⬇️ 下载 Excel 文件",
+                                data=f,
+                                file_name=filename,
+                                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                            )
+                    else:
+                        st.error("❌ 导出失败，请确保已安装 pandas 和 openpyxl")
+            
+            # 显示所有问卷数据
+            st.subheader("📋 所有问卷记录")
+            
+            all_questionnaires = database.get_all_questionnaires(limit=100)
+            if all_questionnaires:
+                df = pd.DataFrame(all_questionnaires)
+                st.dataframe(df, use_container_width=True)
+            else:
+                st.info("暂无问卷数据")
+            
+            # 数据库信息
+            st.subheader("🗄️ 数据库信息")
+            
+            db_info = database.get_database_info()
+            if db_info:
+                st.write(f"**数据库文件**: {db_info['file_path']}")
+                st.write(f"**文件大小**: {db_info['file_size']}")
+                st.write(f"**数据表**: {', '.join(db_info['tables'])}")
+            else:
+                st.info("数据库文件不存在")
+                
+        except Exception as e:
+            st.error(f"❌ 数据加载失败: {e}")
+            st.info("💡 提示：如果数据库为空，请先完成一些问卷")

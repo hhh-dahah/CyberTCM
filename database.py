@@ -33,8 +33,91 @@ def init_db():
     )
     ''')
     
+    # 创建管理员密码表
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS admin_password (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        password TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
     conn.commit()
     conn.close()
+    
+    # 初始化默认密码
+    init_admin_password()
+
+def init_admin_password():
+    """
+    初始化管理员密码，如果不存在则设置默认密码8888
+    """
+    conn = sqlite3.connect('cybertcm.db')
+    c = conn.cursor()
+    
+    # 检查是否已存在密码
+    c.execute('SELECT COUNT(*) FROM admin_password')
+    count = c.fetchone()[0]
+    
+    if count == 0:
+        # 设置默认密码8888
+        c.execute('INSERT INTO admin_password (password) VALUES (?)', ('8888',))
+        conn.commit()
+    
+    conn.close()
+
+def verify_admin_password(password):
+    """
+    验证管理员密码
+    
+    Args:
+        password: 输入的密码
+    
+    Returns:
+        bool: 密码是否正确
+    """
+    conn = sqlite3.connect('cybertcm.db')
+    c = conn.cursor()
+    
+    c.execute('SELECT password FROM admin_password WHERE id = 1')
+    result = c.fetchone()
+    
+    conn.close()
+    
+    if result:
+        return result[0] == password
+    return False
+
+def update_admin_password(current_password, new_password):
+    """
+    修改管理员密码
+    
+    Args:
+        current_password: 当前密码
+        new_password: 新密码
+    
+    Returns:
+        tuple: (是否成功, 错误信息)
+    """
+    # 先验证当前密码
+    if not verify_admin_password(current_password):
+        return False, "当前密码错误"
+    
+    conn = sqlite3.connect('cybertcm.db')
+    c = conn.cursor()
+    
+    try:
+        c.execute('''
+        UPDATE admin_password 
+        SET password = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = 1
+        ''', (new_password,))
+        conn.commit()
+        conn.close()
+        return True, "密码修改成功"
+    except Exception as e:
+        conn.close()
+        return False, f"修改失败: {str(e)}"
 
 def get_or_create_user(nickname):
     """
