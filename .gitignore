@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Database
+cybertcm.db
+
+# Export files
+*.xlsx
+*.csv
+
+# Excel temporary files
+~$*.xlsx
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

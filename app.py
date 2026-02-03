@@ -2,6 +2,11 @@ import streamlit as st
 import logic # 引入我们的大脑
 import plotly.graph_objects as go # 记得在文件最上面加这一行
 import os # <--- 【修改点1】引入os模块，用于检查本地图片是否存在
+import database # 引入数据库操作模块
+import pandas as pd
+
+# 初始化数据库
+database.init_db()
 
 # 1. 页面基础设置 (必须是第一行)
 st.set_page_config(
@@ -84,9 +89,21 @@ with st.sidebar:
     st.title("🔋 能量控制台")
     st.info("系统版本: v0.1 Alpha")
     
-    # 模拟登录
-    user_name = st.text_input("输入代号 (ID):", "Player1")
-    st.write(f"欢迎回来, {user_name}")
+    # 昵称输入（必填）
+    user_name = st.text_input("输入代号 (ID):", "", placeholder="请输入您的昵称")
+    
+    # 昵称验证
+    if not user_name:
+        st.error("⚠️ 请输入昵称后再继续")
+        nickname_valid = False
+    else:
+        st.success(f"欢迎回来, {user_name} 👋")
+        nickname_valid = True
+        
+        # 获取或创建用户
+        user_id = database.get_or_create_user(user_name)
+        st.session_state["user_id"] = user_id
+        st.session_state["nickname"] = user_name
     
     st.divider() # 分割线
     st.write("🔧 调试工具")
@@ -99,11 +116,16 @@ st.title("👾 TCM-BTI：你的赛博体质说明书")
 st.markdown("##### *✨ 科学解码 · 国潮养生 · 寻找你的体质同类*")
 
 # 4. 核心功能区 (用 Tabs 分页)
-tab1, tab2, tab3 = st.tabs(["🧬 快速扫描 (问卷)", "📸 舌象解码 (AI)", "🔮 专属体质报告"])
+tab1, tab2, tab3, tab4 = st.tabs(["🧬 快速扫描 (问卷)", "📸 舌象解码 (AI)", "🔮 专属体质报告", "📊 数据管理"])
 
 # --- 模块 1: 问卷区 (动态版) ---
 with tab1:
     st.header("🧬 第一阶段: 基础数据采集")
+    
+    # 检查昵称是否已输入
+    if 'nickname_valid' not in locals() or not nickname_valid:
+        st.warning("⚠️ 请先在左侧边栏输入您的昵称")
+        st.stop()
     
     # 1. 调用大脑，加载题目
     df_questions = logic.load_questions()
@@ -139,6 +161,28 @@ with tab1:
                 result = logic.calculate_results(st.session_state, df_questions, df_types)
                 st.session_state["result"] = result # 存入 session
                 
+                # 3. 存储到数据库
+                if "user_id" in st.session_state:
+                    user_id = st.session_state["user_id"]
+                    
+                    # 提取用户答案
+                    user_answers = {}
+                    for key, value in st.session_state.items():
+                        if key.startswith("q_"):
+                            user_answers[key] = value
+                    
+                    # 存储问卷数据
+                    database.save_questionnaire(
+                        user_id=user_id,
+                        type_code=result["user_info"]["type_code"],
+                        type_name=result["user_info"]["type_name"],
+                        radar_data=result["radar_chart"],
+                        energy_data=result["energy_bars"],
+                        answers=user_answers
+                    )
+                    
+                    st.success("✅ 数据已同步到赛博数据库！")
+                
                 st.success("✅ 数据解算完成！请点击顶部的 [专属体质报告] 查看结果。")
                 st.balloons()
             else:
@@ -147,6 +191,12 @@ with tab1:
 # --- 模块 2: 视觉区 ---
 with tab2:
     st.header("第二阶段: 生物特征识别")
+    
+    # 检查昵称是否已输入
+    if 'nickname_valid' not in locals() or not nickname_valid:
+        st.warning("⚠️ 请先在左侧边栏输入您的昵称")
+        st.stop()
+    
     st.warning("⚠️ 请在光线充足环境下拍摄舌象")
     
     # 上传组件
@@ -160,6 +210,11 @@ with tab2:
 # ...
 
 with tab3:
+    # 检查昵称是否已输入
+    if 'nickname_valid' not in locals() or not nickname_valid:
+        st.warning("⚠️ 请先在左侧边栏输入您的昵称")
+        st.stop()
+    
     if "result" in st.session_state:
         res = st.session_state["result"]
         info = res["user_info"]
@@ -171,7 +226,7 @@ with tab3:
         # 判词卡片
         st.markdown(f"""
         <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; border-left: 5px solid #00FFC8; margin-bottom: 20px;">
-            <p style="color: #00FFC8; font-size: 1.2em; font-family: 'Songti SC';">“{badge['poem']}”</p>
+            <p style="color: #00FFC8; font-size: 1.2em; font-family: 'Songti SC';">"{badge['poem']}"</p>
             <p style="color: #aaa; font-size: 0.9em;">—— {badge['slogan']}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -261,3 +316,146 @@ with tab3:
 
     else:
         st.info("👈 请先在左侧完成 [问卷扫描] 以解锁数据")
+
+# --- 模块 4: 数据管理区 ---
+with tab4:
+    st.header("📊 赛博数据中心")
+    st.markdown("*管理和导出您收集的体质数据*")
+    
+    # 数据统计概览
+    st.subheader("📈 数据概览")
+    
+    try:
+        stats = database.get_statistics()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("👥 总用户数", stats['total_users'])
+        with col2:
+            st.metric("📝 总问卷数", stats['total_questionnaires'])
+        with col3:
+            st.metric("📅 今日新增", stats['today_count'])
+        
+        # 体质类型分布
+        if stats['type_distribution']:
+            st.subheader("🧬 体质类型分布")
+            
+            # 创建体质分布数据
+            type_data = pd.DataFrame(stats['type_distribution'])
+            
+            # 显示分布图表
+            fig = go.Figure(data=[
+                go.Bar(
+                    x=type_data['type_name'],
+                    y=type_data['count'],
+                    marker_color='#00FFC8'
+                )
+            ])
+            fig.update_layout(
+                title="体质类型统计",
+                xaxis_title="体质类型",
+                yaxis_title="数量",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font_color="white"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # 显示详细数据表
+            st.dataframe(type_data, use_container_width=True)
+        
+        # 数据查询功能
+        st.subheader("🔍 数据查询")
+        
+        # 搜索选项
+        search_col1, search_col2, search_col3 = st.columns(3)
+        with search_col1:
+            search_nickname = st.text_input("按昵称搜索", "")
+        with search_col2:
+            search_type = st.selectbox("按体质类型", ["全部"] + [t['type_code'] for t in stats['type_distribution']])
+        with search_col3:
+            date_range = st.date_input("日期范围", [])
+        
+        # 执行搜索
+        if st.button("🔍 搜索"):
+            start_date = None
+            end_date = None
+            if len(date_range) == 2:
+                start_date = date_range[0].strftime('%Y-%m-%d')
+                end_date = date_range[1].strftime('%Y-%m-%d')
+            
+            type_code = None if search_type == "全部" else search_type
+            
+            results = database.search_questionnaires(
+                nickname=search_nickname if search_nickname else None,
+                type_code=type_code,
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            if results:
+                st.success(f"找到 {len(results)} 条记录")
+                results_df = pd.DataFrame(results)
+                st.dataframe(results_df, use_container_width=True)
+            else:
+                st.info("未找到匹配的记录")
+        
+        # 数据导出功能
+        st.subheader("💾 数据导出")
+        
+        export_col1, export_col2 = st.columns(2)
+        with export_col1:
+            if st.button("📄 导出为 CSV"):
+                filename = database.export_to_csv()
+                st.success(f"✅ 数据已导出到: {filename}")
+                
+                # 提供下载链接
+                with open(filename, 'rb') as f:
+                    st.download_button(
+                        label="⬇️ 下载 CSV 文件",
+                        data=f,
+                        file_name=filename,
+                        mime='text/csv'
+                    )
+        
+        with export_col2:
+            if st.button("📊 导出为 Excel"):
+                filename = database.export_to_excel()
+                if filename:
+                    st.success(f"✅ 数据已导出到: {filename}")
+                    
+                    # 提供下载链接
+                    with open(filename, 'rb') as f:
+                        st.download_button(
+                            label="⬇️ 下载 Excel 文件",
+                            data=f,
+                            file_name=filename,
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        )
+                else:
+                    st.error("❌ 导出失败，请确保已安装 pandas 和 openpyxl")
+        
+        # 显示所有问卷数据
+        st.subheader("📋 所有问卷记录")
+        
+        all_questionnaires = database.get_all_questionnaires(limit=100)
+        if all_questionnaires:
+            df = pd.DataFrame(all_questionnaires)
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("暂无问卷数据")
+        
+        # 数据库信息
+        st.subheader("🗄️ 数据库信息")
+        
+        db_info = database.get_database_info()
+        if db_info:
+            st.write(f"**数据库文件**: {db_info['file_path']}")
+            st.write(f"**文件大小**: {db_info['file_size']}")
+            st.write(f"**数据表**: {', '.join(db_info['tables'])}")
+        else:
+            st.info("数据库文件不存在")
+            
+    except Exception as e:
+        st.error(f"❌ 数据加载失败: {e}")
+        st.info("💡 提示：如果数据库为空，请先完成一些问卷")
