@@ -4,7 +4,7 @@ import plotly.graph_objects as go # 记得在文件最上面加这一行
 import os # <--- 【修改点1】引入os模块，用于检查本地图片是否存在
 import database # 引入数据库操作模块
 import pandas as pd
-
+#一行注释
 # 初始化数据库
 database.init_db()
 
