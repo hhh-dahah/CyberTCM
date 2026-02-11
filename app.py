@@ -1,6 +1,8 @@
 import streamlit as st
 import logic # 引入我们的大脑
-import plotly.graph_objects as go # 记得在文件最上面加这一行
+
+import plotly.graph_objects as go  # 记得在文件最上面加这一行
+
 import os # <--- 【修改点1】引入os模块，用于检查本地图片是否存在
 import database # 引入数据库操作模块
 import pandas as pd
@@ -51,13 +53,90 @@ h1:hover, h2:hover, h3:hover {
     border-right: 1px solid rgba(0, 255, 200, 0.1);
 }
 
-/* 4. 卡片容器：黑钻质感 */
-div[data-testid="stVerticalBlock"] > div {
+/* 4. 卡片容器：黑钻质感 - 只应用于侧边栏 */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div {
     background-color: rgba(255, 255, 255, 0.03); /* 极淡的白透明 */
     border: 1px solid rgba(0, 255, 200, 0.2); 
     border-radius: 12px;
     padding: 20px;
     backdrop-filter: blur(5px);
+    margin-bottom: 25px !important; /* 增加底部间距 */
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 修复侧边栏内所有元素的间距问题 */
+[data-testid="stSidebar"] .stTextInput,
+[data-testid="stSidebar"] div[data-testid="stTextInput"] {
+    margin-bottom: 15px !important;
+    margin-top: 10px !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* 修复输入框容器，防止溢出 */
+[data-testid="stSidebar"] div[data-testid="stTextInput"] > div {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* 修复输入框本身 */
+[data-testid="stSidebar"] div[data-testid="stTextInput"] input {
+    margin: 0 !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* 修复输入框外层容器 */
+[data-testid="stSidebar"] div[data-testid="stElementContainer"] {
+    margin-bottom: 15px !important;
+    position: relative;
+}
+
+[data-testid="stSidebar"] .stAlert,
+[data-testid="stSidebar"] div[data-testid="stAlert"] {
+    margin-top: 10px !important;
+    margin-bottom: 15px !important;
+}
+
+[data-testid="stSidebar"] .stDivider,
+[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+}
+
+/* 确保侧边栏内的垂直块之间有足够的间距 */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+    gap: 20px !important;
+}
+
+/* 修复侧边栏内标签和输入框之间的间距 */
+[data-testid="stSidebar"] .stMarkdown {
+    margin-bottom: 10px !important;
+}
+
+/* 赛博风格回到顶端按钮 */
+.back-to-top-btn {
+    display: inline-block;
+    background: transparent;
+    border: 2px solid #00FFC8;
+    border-radius: 8px;
+    color: #00FFC8;
+    padding: 12px 20px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-decoration: none;
+    margin-top: 20px;
+}
+
+.back-to-top-btn:hover {
+    background: #00FFC8;
+    color: #0E1117;
+    box-shadow: 0 0 20px rgba(0, 255, 200, 0.6);
+    transform: translateY(-2px);
 }
 
 /* 5. 按钮：平时空心，悬停实心 (更高级的赛博感) */
@@ -84,6 +163,10 @@ div.stButton > button:hover {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# 添加页面顶部锚点
+st.markdown("<div id='top'></div>", unsafe_allow_html=True)
+
 # 2. 侧边栏：控制中心
 with st.sidebar:
     st.title("🔋 能量控制台")
@@ -105,7 +188,6 @@ with st.sidebar:
         st.session_state["user_id"] = user_id
         st.session_state["nickname"] = user_name
     
-    st.divider() # 分割线
     st.write("🔧 调试工具")
     if st.button("清除缓存 (Reset)"):
         st.cache_data.clear()
@@ -116,10 +198,39 @@ st.title("👾 TCM-BTI：你的赛博体质说明书")
 st.markdown("##### *✨ 科学解码 · 国潮养生 · 寻找你的体质同类*")
 
 # 4. 核心功能区 (用 Tabs 分页)
-tab1, tab2, tab3, tab4 = st.tabs(["🧬 快速扫描 (问卷)", "📸 舌象解码 (AI)", "🔮 专属体质报告", "📊 数据管理"])
+# 初始化活动标签页
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = 0
+
+tab_names = ["🧬 快速扫描 (问卷)", "📸 舌象解码 (AI)", "🔮 专属体质报告", "📊 数据管理"]
+
+# 使用 radio 按钮作为标签导航，支持程序化切换
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    if st.button("🧬 快速扫描", use_container_width=True, 
+                 type="primary" if st.session_state["active_tab"] == 0 else "secondary"):
+        st.session_state["active_tab"] = 0
+        st.rerun()
+with col2:
+    if st.button("📸 舌象解码", use_container_width=True,
+                 type="primary" if st.session_state["active_tab"] == 1 else "secondary"):
+        st.session_state["active_tab"] = 1
+        st.rerun()
+with col3:
+    if st.button("🔮 体质报告", use_container_width=True,
+                 type="primary" if st.session_state["active_tab"] == 2 else "secondary"):
+        st.session_state["active_tab"] = 2
+        st.rerun()
+with col4:
+    if st.button("📊 数据管理", use_container_width=True,
+                 type="primary" if st.session_state["active_tab"] == 3 else "secondary"):
+        st.session_state["active_tab"] = 3
+        st.rerun()
+
+st.divider()
 
 # --- 模块 1: 问卷区 (动态版) ---
-with tab1:
+if st.session_state["active_tab"] == 0:
     st.header("🧬 第一阶段: 基础数据采集")
     
     # 检查昵称是否已输入
@@ -191,17 +302,22 @@ with tab1:
                 st.markdown("### 🚀 查看您的体质报告")
                 st.info("👇 点击下方按钮查看详细体质分析报告")
                 
-                if st.button("🔮 点击查看体质报告", type="primary", use_container_width=True):
-                    # 设置session_state标记，切换到体质报告标签页
-                    st.session_state["active_tab"] = "体质报告"
+                if st.button("🔮 点击查看体质报告", type="primary", use_container_width=True, key="goto_report_btn"):
+                    # 设置session_state标记，切换到体质报告标签页 (索引2)
+                    st.session_state["active_tab"] = 2
                     st.rerun()
                 
                 st.balloons()
+                
+                # 添加回到顶端按钮
+                st.markdown("""
+                <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
+                """, unsafe_allow_html=True)
             else:
                 st.error("数据库连接失败 (Excel not found)")
 
 # --- 模块 2: 视觉区 ---
-with tab2:
+elif st.session_state["active_tab"] == 1:
     st.header("第二阶段: 生物特征识别")
     
     # 检查昵称是否已输入
@@ -215,13 +331,18 @@ with tab2:
     uploaded_file = st.file_uploader("上传舌头照片", type=['jpg', 'png'])
     if uploaded_file:
         st.image(uploaded_file, caption="样本采集成功", width=300)
+        
+        # 添加回到顶端按钮
+        st.markdown("""
+        <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
+        """, unsafe_allow_html=True)
 
 # --- 模块 3: 结果区 ---
 
 
 # ...
 
-with tab3:
+elif st.session_state["active_tab"] == 2:
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
         st.warning("⚠️ 请先在左侧边栏输入您的昵称")
@@ -325,12 +446,17 @@ with tab3:
             st.info("**Start 开始**")
             for item in res['action_guide']['start']:
                 st.write(f"🚀 {item}")
+        
+        # 添加回到顶端按钮
+        st.markdown("""
+        <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
+        """, unsafe_allow_html=True)
 
     else:
         st.info("👈 请先在左侧完成 [问卷扫描] 以解锁数据")
 
 # --- 模块 4: 数据管理区 (管理员专用) ---
-with tab4:
+elif st.session_state["active_tab"] == 3:
     st.header("� 赛博数据中心")
     st.markdown("*管理员专用 - 管理和导出体质数据*")
     
