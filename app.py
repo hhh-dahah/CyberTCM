@@ -194,8 +194,11 @@ with st.sidebar:
         st.success("内存已释放")
 
 # 3. 主界面：赛博标题
-st.title("👾 TCM-BTI：你的赛博体质说明书")
+st.title("👾 PBTI")
+st.title("你的体质你说明书")
 st.markdown("##### *✨ 科学解码 · 国潮养生 · 寻找你的体质同类*")
+st.markdown("61题内测版 预计7-8分钟完成")
+st.markdown("<span style='color: #FF4444; font-weight: bold;'>⚠️ 内设逻辑判定算法 请勿乱填 否则数据作废</span>", unsafe_allow_html=True)
 
 # 4. 核心功能区 (用 Tabs 分页)
 # 初始化活动标签页
