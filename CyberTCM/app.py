@@ -317,11 +317,14 @@ if st.session_state["active_tab"] == 0:
                 # 提取两部分答案
                 part1_answers = {}
                 part2_answers = {}
+                raw_answers = {}
                 for key, value in st.session_state.items():
                     if key.startswith("q_"):
                         part1_answers[key] = value
+                        raw_answers[key] = value
                     elif key.startswith("wjw_q_"):
                         part2_answers[key] = value
+                        raw_answers[key] = value
                 
                 # 保存完整数据
                 database.save_complete_questionnaire(
@@ -329,7 +332,8 @@ if st.session_state["active_tab"] == 0:
                     part1_result=result_part1,
                     part2_result=result_part2,
                     part1_answers=part1_answers,
-                    part2_answers=part2_answers
+                    part2_answers=part2_answers,
+                    raw_answers=raw_answers
                 )
                 
                 st.success("✅ 数据已同步到赛博数据库！")
