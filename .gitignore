@@ -6,7 +6,9 @@ __pycache__/
 cybertcm.db
 
 # Export files
-*.xlsx
+# 注意：保留 database1.xlsx 因为它包含卫健委题库
+cybertcm_export.xlsx
+cybertcm_export.csv
 *.csv
 
 # Excel temporary files

@@ -6,6 +6,10 @@ import plotly.graph_objects as go  # 记得在文件最上面加这一行
 import os # <--- 【修改点1】引入os模块，用于检查本地图片是否存在
 import database # 引入数据库操作模块
 import pandas as pd
+
+# 兼容性处理：旧版本 streamlit 使用 experimental_rerun
+if not hasattr(st, 'rerun'):
+    st.rerun = st.experimental_rerun
 #一行注释
 # 初始化数据库
 database.init_db()
@@ -202,12 +206,22 @@ st.markdown("##### *✨ 科学解码 · 国潮养生 · 寻找你的体质同类
 if "active_tab" not in st.session_state:
     st.session_state["active_tab"] = 0
 
-tab_names = ["🧬 快速扫描 (问卷)", "📸 舌象解码 (AI)", "🔮 专属体质报告", "📊 数据管理"]
+# 初始化问卷完成状态
+if "part1_completed" not in st.session_state:
+    st.session_state["part1_completed"] = False
+if "part2_completed" not in st.session_state:
+    st.session_state["part2_completed"] = False
+if "part1_result" not in st.session_state:
+    st.session_state["part1_result"] = None
+if "part2_result" not in st.session_state:
+    st.session_state["part2_result"] = None
+
+tab_names = ["🧬 快速扫描 (28题)", "🏥 卫健委体质 (33题)", "📸 舌象解码 (AI)", "🔮 专属体质报告", "📊 数据管理"]
 
 # 使用 radio 按钮作为标签导航，支持程序化切换
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    if st.button("🧬 快速扫描", use_container_width=True, 
+    if st.button("🧬 体质问卷", use_container_width=True, 
                  type="primary" if st.session_state["active_tab"] == 0 else "secondary"):
         st.session_state["active_tab"] = 0
         st.rerun()
@@ -229,96 +243,114 @@ with col4:
 
 st.divider()
 
-# --- 模块 1: 问卷区 (动态版) ---
+# --- 模块 1: 问卷区 (双盲合并版) ---
 if st.session_state["active_tab"] == 0:
-    st.header("🧬 第一阶段: 基础数据采集")
+    st.header("🧬 体质评估问卷")
     
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
         st.warning("⚠️ 请先在左侧边栏输入您的昵称")
         st.stop()
     
-    # 1. 调用大脑，加载题目
-    df_questions = logic.load_questions()
+    # 加载两组题目
+    df_questions = logic.load_questions()  # 28题
+    df_wjw = logic.load_wjw_data()  # 33题
     
-    # 2. 创建一个表单 (Form)，这样用户填完所有题点提交才会刷新
-    with st.form("quiz_form"):
-        # 遍历题库，自动生成题目
+    if df_questions is None or df_wjw is None:
+        st.error("❌ 无法加载题库，请检查数据库文件")
+        st.stop()
+    
+    # 合并题目（不告诉用户来源）
+    total_questions = len(df_questions) + len(df_wjw)
+    st.info(f"📋 共 {total_questions} 道题目，请根据您的实际情况选择")
+    
+    # 创建合并表单
+    with st.form("combined_quiz_form"):
+        # 第一组题目（28题）- 不显示来源
         for index, row in df_questions.iterrows():
-            # 添加题号显示
             question_number = index + 1
             st.write(f"**{question_number}. {row['question']}**")
-            # 这里的 key 是关键，用来区分每一道题
             st.radio(
                 "请选择程度:", 
                 ["A. 非常符合 (5分)", "B. 比较符合 (4分)", "C. 一般 (3分)", "D. 不太符合 (2分)", "E. 完全不符 (1分)"],
-                key=f"q_{row['id']}", # 给每个题目一个唯一的身份证号
-                index=2, # 默认选 C
-                horizontal=True, # 选项横着排
-                label_visibility="collapsed" # 隐藏多余的标签
+                key=f"q_{row['id']}",
+                index=2,
+                horizontal=True,
+                label_visibility="collapsed"
             )
-            st.markdown("---") # 分割线
-
-        # 3. 提交按钮
-        submitted = st.form_submit_button("🚀 生成体质报告", type="primary")
+            st.markdown("---")
         
-        # ... (前面的代码不变) ...
-
+        # 第二组题目（33题）- 不显示来源，题号连续
+        for index, row in df_wjw.iterrows():
+            question_number = len(df_questions) + index + 1
+            st.write(f"**{question_number}. {row['question']}**")
+            st.radio(
+                "请选择程度:",
+                ["A. 非常符合 (5分)", "B. 比较符合 (4分)", "C. 一般 (3分)", "D. 不太符合 (2分)", "E. 完全不符 (1分)"],
+                key=f"wjw_q_{row['id']}",
+                index=2,
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+            st.markdown("---")
+        
+        # 提交按钮
+        submitted = st.form_submit_button("🚀 提交问卷", type="primary")
+    
     if submitted:
-        with st.spinner("正在接入赛博算力网络..."):
-            # 1. 加载数据
+        with st.spinner("正在分析您的体质数据..."):
+            # 1. 计算八纲辨证结果
             df_questions, df_types = logic.load_data()
+            result_part1 = logic.calculate_results(st.session_state, df_questions, df_types)
+            st.session_state["part1_result"] = result_part1
+            st.session_state["part1_completed"] = True
             
-            if df_questions is not None:
-                # 2. 计算结果
-                result = logic.calculate_results(st.session_state, df_questions, df_types)
-                st.session_state["result"] = result # 存入 session
+            # 2. 计算卫健委体质结果
+            result_part2 = logic.calculate_wjw_results(st.session_state, df_wjw)
+            st.session_state["part2_result"] = result_part2
+            st.session_state["part2_completed"] = True
+            
+            # 3. 存储到数据库
+            if "user_id" in st.session_state:
+                user_id = st.session_state["user_id"]
                 
-                # 3. 存储到数据库
-                if "user_id" in st.session_state:
-                    user_id = st.session_state["user_id"]
-                    
-                    # 提取用户答案
-                    user_answers = {}
-                    for key, value in st.session_state.items():
-                        if key.startswith("q_"):
-                            user_answers[key] = value
-                    
-                    # 存储问卷数据
-                    database.save_questionnaire(
-                        user_id=user_id,
-                        type_code=result["user_info"]["type_code"],
-                        type_name=result["user_info"]["type_name"],
-                        radar_data=result["radar_chart"],
-                        energy_data=result["energy_bars"],
-                        answers=user_answers
-                    )
-                    
-                    st.success("✅ 数据已同步到赛博数据库！")
+                # 提取两部分答案
+                part1_answers = {}
+                part2_answers = {}
+                raw_answers = {}
+                for key, value in st.session_state.items():
+                    if key.startswith("q_"):
+                        part1_answers[key] = value
+                        raw_answers[key] = value
+                    elif key.startswith("wjw_q_"):
+                        part2_answers[key] = value
+                        raw_answers[key] = value
                 
-                st.success("✅ 数据解算完成！")
+                # 保存完整数据
+                database.save_complete_questionnaire(
+                    user_id=user_id,
+                    part1_result=result_part1,
+                    part2_result=result_part2,
+                    part1_answers=part1_answers,
+                    part2_answers=part2_answers,
+                    raw_answers=raw_answers
+                )
                 
-                # 添加直接跳转到体质报告的按钮
-                st.markdown("### 🚀 查看您的体质报告")
-                st.info("👇 点击下方按钮查看详细体质分析报告")
-                
-                if st.button("🔮 点击查看体质报告", type="primary", use_container_width=True, key="goto_report_btn"):
-                    # 设置session_state标记，切换到体质报告标签页 (索引2)
-                    st.session_state["active_tab"] = 2
-                    st.rerun()
-                
-                st.balloons()
-                
-                # 添加回到顶端按钮
-                st.markdown("""
-                <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
-                """, unsafe_allow_html=True)
-            else:
-                st.error("数据库连接失败 (Excel not found)")
+                st.success("✅ 数据已同步到赛博数据库！")
+            
+            st.success("✅ 体质评估完成！")
+            st.success("🎉 完整的体质报告已生成！现在回到顶部查看吧！")
+            
+            # 添加回到顶部按钮
+            st.markdown("""
+            <a href="#top" class="back-to-top-btn">⬆ 回到顶部</a>
+            """, unsafe_allow_html=True)
+            
+            st.balloons()
 
 # --- 模块 2: 视觉区 ---
 elif st.session_state["active_tab"] == 1:
-    st.header("第二阶段: 生物特征识别")
+    st.header("第三阶段: 生物特征识别")
     
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
@@ -337,125 +369,169 @@ elif st.session_state["active_tab"] == 1:
         <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
         """, unsafe_allow_html=True)
 
-# --- 模块 3: 结果区 ---
-
-
-# ...
-
+# --- 模块 4: 结果区 ---
 elif st.session_state["active_tab"] == 2:
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
         st.warning("⚠️ 请先在左侧边栏输入您的昵称")
         st.stop()
     
-    if "result" in st.session_state:
-        res = st.session_state["result"]
-        info = res["user_info"]
-        badge = res["social_badge"]
+    # 检查是否两部分都已完成
+    part1_done = st.session_state.get("part1_completed", False)
+    part2_done = st.session_state.get("part2_completed", False)
+    
+    if not part1_done and not part2_done:
+        st.info("👈 请先在左侧完成【快速扫描(28题)】和【卫健委体质(33题)】以解锁数据")
+        st.stop()
+    
+    st.header("🔮 您的完整体质报告")
+    
+    # 创建两列显示两种体质结果
+    col_part1, col_part2 = st.columns(2)
+    
+    # --- 第一部分：八纲辨证体质结果 ---
+    with col_part1:
+        st.subheader("🧬 八纲辨证体质")
         
-        # --- 第一层：社交面具 (The Badge) ---
-        st.markdown(f"### 🛡️ 你的赛博体质: 【{info['type_code']} · {info['type_name']}】")
-        
-        # 判词卡片
-        st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; border-left: 5px solid #00FFC8; margin-bottom: 20px;">
-            <p style="color: #00FFC8; font-size: 1.2em; font-family: 'Songti SC';">"{badge['poem']}"</p>
-            <p style="color: #aaa; font-size: 0.9em;">—— {badge['slogan']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 角色说明
-        col_img, col_desc = st.columns([1, 2])
-        with col_img:
-            # === 【修改点2】 本地图片加载逻辑 ===
-            # 尝试查找本地 assets 文件夹下的对应图片 (例如 assets/CVDQ.png)
-            local_img_path = f"assets/{info['type_code']}.png"
+        if part1_done and st.session_state.get("part1_result"):
+            res = st.session_state["part1_result"]
+            info = res["user_info"]
+            badge = res["social_badge"]
             
-            if os.path.exists(local_img_path):
-                # 找到了本地图片，直接显示
-                st.image(local_img_path, caption=f"PBTI 印象: {info['type_name']}")
-            else:
-                # 没找到，使用 DiceBear 生成的随机赛博头像作为兜底
-                st.image("https://api.dicebear.com/9.x/notionists/svg?seed=" + info['type_code'], caption="PBTI 印象 (Default)")
-            # === 修改结束 ===
-
-        with col_desc:
-            st.write(f"**🔩 出厂设置**")
-            st.caption(badge['factory_setting'])
-            st.write(f"**⚠️ 系统 Bug**")
-            for bug in badge['bug_warning']:
-                st.error(bug) # 用红色报错条显示 Bug，很有感觉
-
-        st.divider()
-
-        # --- 第二层：客观说明书 (The Manual) ---
-        st.subheader("📊 系统参数面板")
-        
-        # 1. 雷达图 (Plotly)
-        radar_data = res["radar_chart"]
-        categories = ['寒','热','虚','实','燥','湿','郁','瘀']
-        values = [radar_data['cold'], radar_data['heat'], radar_data['void'], radar_data['solid'], 
-                  radar_data['dry'], radar_data['wet'], radar_data['qi'], radar_data['blood']]
-        
-        fig = go.Figure()
-        fig.add_trace(go.Scatterpolar(
-            r=values,
-            theta=categories,
-            fill='toself',
-            name=info['type_name'],
-            line_color='#00FFC8'
-        ))
-        fig.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-            paper_bgcolor='rgba(0,0,0,0)', # 透明背景
-            plot_bgcolor='rgba(0,0,0,0)',
-            font_color="white",
-            margin=dict(l=20, r=20, t=20, b=20)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # 2. 双向能量条
-        st.write("**⚡ 能量对抗监测**")
-        for bar in res["energy_bars"]:
-            # 使用 Streamlit 原生滑块模拟进度条 (禁用状态)
-            st.write(f"{bar['left']} ⟵ VS ⟶ {bar['right']}")
-            st.slider(
-                label="hidden", 
-                min_value=-100, max_value=100, value=int(bar['val']), 
-                disabled=True, 
-                key=bar['label']
+            st.markdown(f"**{info['type_code']} · {info['type_name']}**")
+            
+            # 判词
+            st.markdown(f"""
+            <div style="background: rgba(0,255,200,0.1); padding: 10px; border-radius: 8px; border-left: 3px solid #00FFC8;">
+                <p style="color: #00FFC8; font-size: 0.9em; margin: 0;">"{badge['poem']}"</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 雷达图
+            radar_data = res["radar_chart"]
+            categories = ['寒','热','虚','实','燥','湿','郁','瘀']
+            values = [radar_data['cold'], radar_data['heat'], radar_data['void'], radar_data['solid'], 
+                      radar_data['dry'], radar_data['wet'], radar_data['qi'], radar_data['blood']]
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatterpolar(
+                r=values,
+                theta=categories,
+                fill='toself',
+                name=info['type_name'],
+                line_color='#00FFC8'
+            ))
+            fig.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font_color="white",
+                margin=dict(l=20, r=20, t=20, b=20),
+                height=300
             )
-
-        st.divider()
-
-        # --- 第三层：行动指南 (The Action) ---
-        st.subheader("🚀 调优方案 (v1.0 Patch)")
+            st.plotly_chart(fig, use_container_width=True)
+            
+        else:
+            st.warning("⚠️ 尚未完成八纲辨证体质评估")
+            if st.button("🧬 去完成28题评估", key="goto_part1"):
+                st.session_state["active_tab"] = 0
+                st.rerun()
+    
+    # --- 第二部分：卫健委9种体质结果 ---
+    with col_part2:
+        st.subheader("🏥 卫健委9种体质")
         
-        ac_col1, ac_col2, ac_col3 = st.columns(3)
-        with ac_col1:
-            st.success("**Keep 保持**")
-            for item in res['action_guide']['keep']:
-                st.write(f"✅ {item}")
-        
-        with ac_col2:
-            st.warning("**Stop 停止**")
-            for item in res['action_guide']['stop']:
-                st.write(f"🛑 {item}")
+        if part2_done and st.session_state.get("part2_result"):
+            wjw_res = st.session_state["part2_result"]
+            
+            st.markdown(f"**主要体质：{wjw_res['main_constitution']}**")
+            st.markdown(f"得分：{wjw_res['main_score']} 分 | 判定：{wjw_res['main_result']}")
+            
+            # 显示所有体质得分表格
+            st.markdown("**各体质详细得分：**")
+            for constitution, result in wjw_res['constitution_results'].items():
+                if result['result'] in ['是', '基本是']:
+                    st.success(f"{constitution}: {result['score']}分 - {result['result']}")
+                elif result['result'] == '倾向是':
+                    st.warning(f"{constitution}: {result['score']}分 - {result['result']}")
+                else:
+                    st.caption(f"{constitution}: {result['score']}分 - {result['result']}")
+        else:
+            st.warning("⚠️ 尚未完成卫健委体质评估")
+            if st.button("🏥 去完成33题评估", key="goto_part2"):
+                st.session_state["active_tab"] = 1
+                st.rerun()
+    
+    st.divider()
+    
+    # --- 保存完整数据到数据库 ---
+    if part1_done and part2_done:
+        if st.button("💾 保存完整报告到数据库", type="primary", use_container_width=True):
+            with st.spinner("正在保存数据..."):
+                # 提取两部分答案
+                part1_answers = {}
+                part2_answers = {}
+                for key, value in st.session_state.items():
+                    if key.startswith("q_"):
+                        part1_answers[key] = value
+                    elif key.startswith("wjw_q_"):
+                        part2_answers[key] = value
                 
-        with ac_col3:
-            st.info("**Start 开始**")
-            for item in res['action_guide']['start']:
-                st.write(f"🚀 {item}")
-        
-        # 添加回到顶端按钮
-        st.markdown("""
-        <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
-        """, unsafe_allow_html=True)
+                # 收集所有原始答案
+                raw_answers = {}
+                for key, value in st.session_state.items():
+                    if key.startswith("q_") or key.startswith("wjw_q_"):
+                        raw_answers[key] = value
+                
+                # 保存完整数据
+                database.save_complete_questionnaire(
+                    user_id=st.session_state["user_id"],
+                    part1_result=st.session_state["part1_result"],
+                    part2_result=st.session_state["part2_result"],
+                    part1_answers=part1_answers,
+                    part2_answers=part2_answers,
+                    raw_answers=raw_answers
+                )
+                st.success("✅ 完整报告已保存到数据库！")
+    
+    # --- 详细结果展示 ---
+    if part1_done and st.session_state.get("part1_result"):
+        with st.expander("📊 查看八纲辨证详细结果"):
+            res = st.session_state["part1_result"]
+            
+            # 双向能量条
+            st.write("**⚡ 能量对抗监测**")
+            for bar in res["energy_bars"]:
+                st.write(f"{bar['left']} ⟵ VS ⟶ {bar['right']}")
+                st.slider(
+                    label="hidden", 
+                    min_value=-100, max_value=100, value=int(bar['val']), 
+                    disabled=True, 
+                    key=f"detail_{bar['label']}"
+                )
+            
+            # 行动指南
+            st.subheader("🚀 调优方案")
+            ac_col1, ac_col2, ac_col3 = st.columns(3)
+            with ac_col1:
+                st.success("**Keep 保持**")
+                for item in res['action_guide']['keep']:
+                    st.write(f"✅ {item}")
+            with ac_col2:
+                st.warning("**Stop 停止**")
+                for item in res['action_guide']['stop']:
+                    st.write(f"🛑 {item}")
+            with ac_col3:
+                st.info("**Start 开始**")
+                for item in res['action_guide']['start']:
+                    st.write(f"🚀 {item}")
+    
+    # 添加回到顶端按钮
+    st.markdown("""
+    <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
+    """, unsafe_allow_html=True)
 
-    else:
-        st.info("👈 请先在左侧完成 [问卷扫描] 以解锁数据")
-
-# --- 模块 4: 数据管理区 (管理员专用) ---
+# --- 模块 5: 数据管理区 (管理员专用) ---
 elif st.session_state["active_tab"] == 3:
     st.header("� 赛博数据中心")
     st.markdown("*管理员专用 - 管理和导出体质数据*")

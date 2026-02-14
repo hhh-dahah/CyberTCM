@@ -38,6 +38,20 @@ def load_questions():
     except:
         return load_mock_data()[0]
 
+def load_wjw_data():
+    """
+    加载卫健委33道题数据 (database1.xlsx)
+    """
+    try:
+        df_questions = pd.read_excel("database1.xlsx", sheet_name="Questions")
+        return df_questions
+    except FileNotFoundError:
+        print("警告：未找到卫健委数据库文件")
+        return None
+    except Exception as e:
+        print(f"卫健委数据加载错误: {e}")
+        return None
+
 def load_mock_data():
     """
     备用数据生成器 (修复了长度不一致的 Bug)
@@ -194,3 +208,106 @@ def calculate_results(session_state, df_questions, df_types):
     }
     
     return result_json
+
+
+# --- 3. 卫健委体质计算模块 ---
+
+# 9种体质的题目映射（根据图片中的标准）
+# 注意：这里使用题目ID映射，实际ID需要根据database1.xlsx调整
+WJW_CONSTITUTION_MAP = {
+    '气虚质': [2, 3, 4, 14],
+    '阳虚质': [11, 12, 13, 29],
+    '阴虚质': [10, 21, 26, 31],
+    '痰湿质': [9, 16, 28, 32],
+    '湿热质': [23, 25, 27, 30],
+    '血瘀质': [19, 22, 24, 33],
+    '气郁质': [5, 6, 7, 8],
+    '特禀质': [15, 17, 18, 20],
+    '平和质': [1, 2, 4, 5, 13]  # (2)(4)(5)(13)反向计分
+}
+
+# 平和质反向计分的题目
+PINGHE_REVERSE_SCORES = [2, 4, 5, 13]
+
+def calculate_wjw_results(session_state, df_questions):
+    """
+    计算卫健委9种体质结果
+    
+    判定标准：
+    - ≥11分：是
+    - 9-10分：倾向是  
+    - ≤8分：否
+    
+    平和质特殊判定：
+    - ≥17分且其他8种都≤8分：是
+    - ≥17分且其他8种都≤10分：基本是
+    - 其他：否
+    """
+    # 1. 提取用户答案（卫健委题目以 wjw_q_ 开头）
+    user_answers = {}
+    for key, value in session_state.items():
+        if key.startswith("wjw_q_"):
+            user_answers[key] = value
+    
+    # 2. 计算各体质得分
+    constitution_scores = {}
+    
+    for constitution, question_ids in WJW_CONSTITUTION_MAP.items():
+        total_score = 0
+        for qid in question_ids:
+            ans_str = user_answers.get(f"wjw_q_{qid}")
+            if ans_str:
+                try:
+                    # 提取分数 (1-5分)
+                    score_part = ans_str.replace('（', '(').split('(')[1]
+                    score = int(score_part.split('分')[0])
+                    
+                    # 平和质的反向计分
+                    if constitution == '平和质' and qid in PINGHE_REVERSE_SCORES:
+                        # 反向计分：1→5, 2→4, 3→3, 4→2, 5→1
+                        score = 6 - score
+                    
+                    total_score += score
+                except:
+                    pass
+        
+        constitution_scores[constitution] = total_score
+    
+    # 3. 判定各体质类型
+    constitution_results = {}
+    for constitution, score in constitution_scores.items():
+        if constitution == '平和质':
+            continue  # 平和质单独处理
+        
+        if score >= 11:
+            constitution_results[constitution] = {'score': score, 'result': '是'}
+        elif score >= 9:
+            constitution_results[constitution] = {'score': score, 'result': '倾向是'}
+        else:
+            constitution_results[constitution] = {'score': score, 'result': '否'}
+    
+    # 4. 平和质特殊判定
+    pinghe_score = constitution_scores.get('平和质', 0)
+    other_scores = [constitution_scores.get(c, 0) for c in WJW_CONSTITUTION_MAP.keys() if c != '平和质']
+    
+    if pinghe_score >= 17 and all(s <= 8 for s in other_scores):
+        constitution_results['平和质'] = {'score': pinghe_score, 'result': '是'}
+    elif pinghe_score >= 17 and all(s <= 10 for s in other_scores):
+        constitution_results['平和质'] = {'score': pinghe_score, 'result': '基本是'}
+    else:
+        constitution_results['平和质'] = {'score': pinghe_score, 'result': '否'}
+    
+    # 5. 确定主要体质（分数最高的）
+    non_pinghe = {k: v for k, v in constitution_results.items() if k != '平和质'}
+    if non_pinghe:
+        main_constitution = max(non_pinghe.items(), key=lambda x: x[1]['score'])
+    else:
+        main_constitution = ('平和质', constitution_results['平和质'])
+    
+    return {
+        'constitution_scores': constitution_scores,
+        'constitution_results': constitution_results,
+        'main_constitution': main_constitution[0],
+        'main_score': main_constitution[1]['score'],
+        'main_result': main_constitution[1]['result']
+    }
