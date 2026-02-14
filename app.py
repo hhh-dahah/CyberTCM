@@ -18,152 +18,273 @@ database.init_db()
 st.set_page_config(
     page_title="CyberTCM 赛博本草",
     page_icon="🧬",
-    layout="wide", # 宽屏模式，更像专业软件
-    initial_sidebar_state="expanded"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
-# --- 🌑 修复版：图标清晰 + 呼吸感交互 ---
+
+# --- 16Personalities Style CSS ---
 st.markdown("""
 <style>
-/* 1. 全局背景：深空黑 + 赛博点阵 */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+/* 全局背景：柔和渐变 */
 .stApp {
-    background-color: #0E1117;
-    background-image: radial-gradient(rgba(0, 255, 200, 0.15) 1px, transparent 1px);
-    background-size: 30px 30px;
+    background: linear-gradient(135deg, #E8F4F8 0%, #F0F9FF 50%, #E0F2FE 100%);
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* 2. 核心修复：标题样式 (H1, H2, H3) */
-/* 平时状态：纯白，看得清图标细节 */
-h1, h2, h3 {
-    color: #FFFFFF !important; 
-    font-family: 'Courier New', sans-serif;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(0, 255, 200, 0.3); /* 淡淡的绿光，证明系统是活的 */
-    transition: all 0.3s ease; /* 0.3秒的丝滑过渡 */
-    cursor: default; /* 鼠标放上去变成箭头 */
-}
-
-/* 悬停状态 (Hover)：瞬间变绿 + 爆闪 */
-h1:hover, h2:hover, h3:hover {
-    color: #00FFC8 !important; /* 荧光绿 */
-    text-shadow: 
-        0 0 20px rgba(0, 255, 200, 0.8),
-        0 0 40px rgba(0, 255, 200, 0.4);
-    transform: scale(1.01); /* 微微放大，像呼吸一样 */
-}
-
-/* 3. 侧边栏样式 */
+/* 隐藏侧边栏 */
 [data-testid="stSidebar"] {
-    background-color: #12141C; /* 比背景稍微亮一点的黑 */
-    border-right: 1px solid rgba(0, 255, 200, 0.1);
+    display: none !important;
 }
 
-/* 4. 卡片容器：黑钻质感 - 只应用于侧边栏 */
-[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div {
-    background-color: rgba(255, 255, 255, 0.03); /* 极淡的白透明 */
-    border: 1px solid rgba(0, 255, 200, 0.2); 
+/* 主内容区域 */
+.main .block-container {
+    max-width: 900px !important;
+    padding: 20px !important;
+}
+
+/* 标题样式 */
+h1 {
+    color: #2D3748 !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 2.5rem !important;
+    text-align: center;
+    margin-bottom: 8px !important;
+}
+
+h2, h3 {
+    color: #4A5568 !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* 所有p标签文字颜色为黑色 */
+p, .stMarkdown p, [data-testid="stText"] p {
+    color: #1A202C !important;
+}
+
+/* Plotly图表中的数字和文字 - 黑色 */
+.js-plotly-plot .plotly .ytick text,
+.js-plotly-plot .plotly .xtick text,
+.js-plotly-plot .plotly .g-xtitle text,
+.js-plotly-plot .plotly .g-ytitle text,
+.js-plotly-plot .plotly .gtitle,
+.js-plotly-plot .plotly text {
+    fill: #1A202C !important;
+    color: #1A202C !important;
+}
+
+/* 问卷选项 - 黑色 */
+[data-testid="stRadio"] label div,
+[data-testid="stRadio"] label span,
+.st-dg.st-dt,
+[data-baseweb="radio"] div {
+    font-size: 1rem !important;
+    color: #1A202C !important;
+}
+
+/* 单选按钮标签 */
+[role="radiogroup"] label {
+    font-size: 1rem !important;
+    color: #1A202C !important;
+}
+
+/* 统计数据卡片数字 */
+[data-testid="stMetricValue"] {
+    font-weight: 700 !important;
+    color: #1A202C !important;
+}
+
+/* 副标题 */
+.subtitle {
+    text-align: center;
+    color: #718096;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+}
+
+/* 版本信息 */
+.version-info {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 0.75rem;
+    color: #A0AEC0;
+    background: rgba(255,255,255,0.8);
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+/* 导航按钮容器 */
+.nav-container {
+    background: white;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin: 0 auto 30px auto;
+    max-width: 800px;
+}
+
+/* 按钮样式 */
+div.stButton > button {
+    background: linear-gradient(135deg, #9F7AEA 0%, #805AD5 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(159, 122, 234, 0.4);
+}
+
+div.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(159, 122, 234, 0.5);
+}
+
+div.stButton > button:active {
+    transform: translateY(0);
+}
+
+/* 次要按钮 */
+div.stButton > button[kind="secondary"] {
+    background: #EDF2F7;
+    color: #4A5568;
+    box-shadow: none;
+}
+
+div.stButton > button[kind="secondary"]:hover {
+    background: #E2E8F0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* 输入框样式 - 白色到蓝色渐变背景 */
+.stTextInput > div > div > input {
     border-radius: 12px;
-    padding: 20px;
-    backdrop-filter: blur(5px);
-    margin-bottom: 25px !important; /* 增加底部间距 */
-    overflow: hidden; /* 防止内容溢出 */
+    border: 2px solid #E2E8F0;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #FFFFFF 0%, #EBF8FF 50%, #E0F2FE 100%) !important;
+    color: #1A202C !important;
 }
 
-/* 修复侧边栏内所有元素的间距问题 */
-[data-testid="stSidebar"] .stTextInput,
-[data-testid="stSidebar"] div[data-testid="stTextInput"] {
-    margin-bottom: 15px !important;
-    margin-top: 10px !important;
-    position: relative;
-    z-index: 1;
+.stTextInput > div > div > input:focus {
+    border-color: #9F7AEA;
+    box-shadow: 0 0 0 3px rgba(159, 122, 234, 0.1);
+    background: linear-gradient(135deg, #FFFFFF 0%, #E6FFFA 50%, #B2F5EA 100%) !important;
 }
 
-/* 修复输入框容器，防止溢出 */
-[data-testid="stSidebar"] div[data-testid="stTextInput"] > div {
-    padding: 0 !important;
-    margin: 0 !important;
+/* 卡片样式 */
+.stForm {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
 
-/* 修复输入框本身 */
-[data-testid="stSidebar"] div[data-testid="stTextInput"] input {
-    margin: 0 !important;
-    position: relative;
-    z-index: 1;
+/* 警告样式 */
+.stAlert {
+    border-radius: 12px;
+    border: none;
 }
 
-/* 修复输入框外层容器 */
-[data-testid="stSidebar"] div[data-testid="stElementContainer"] {
-    margin-bottom: 15px !important;
-    position: relative;
+.stAlert[data-baseweb="notification"] {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    color: #92400E;
 }
 
-[data-testid="stSidebar"] .stAlert,
-[data-testid="stSidebar"] div[data-testid="stAlert"] {
-    margin-top: 10px !important;
-    margin-bottom: 15px !important;
+/* 成功样式 */
+.stSuccess {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+    color: #065F46;
 }
 
-[data-testid="stSidebar"] .stDivider,
-[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
-    margin-top: 20px !important;
-    margin-bottom: 20px !important;
+/* 错误样式 */
+.stError {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+    color: #991B1B;
 }
 
-/* 确保侧边栏内的垂直块之间有足够的间距 */
-[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-    gap: 20px !important;
+/* 信息样式 */
+.stInfo {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+    color: #1E40AF;
 }
 
-/* 修复侧边栏内标签和输入框之间的间距 */
-[data-testid="stSidebar"] .stMarkdown {
-    margin-bottom: 10px !important;
+/* 分隔线 */
+hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #E2E8F0, transparent);
+    margin: 30px 0;
 }
 
-/* 赛博风格回到顶端按钮 */
+/* 回到顶部按钮 */
 .back-to-top-btn {
     display: inline-block;
-    background: transparent;
-    border: 2px solid #00FFC8;
-    border-radius: 8px;
-    color: #00FFC8;
-    padding: 12px 20px;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
+    background: linear-gradient(135deg, #9F7AEA 0%, #805AD5 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 28px;
+    font-weight: 700;
+    font-size: 1rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 2px;
     text-decoration: none;
+    box-shadow: 0 4px 15px rgba(159, 122, 234, 0.4);
     margin-top: 20px;
 }
 
 .back-to-top-btn:hover {
-    background: #00FFC8;
-    color: #0E1117;
-    box-shadow: 0 0 20px rgba(0, 255, 200, 0.6);
     transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(159, 122, 234, 0.5);
 }
 
-/* 5. 按钮：平时空心，悬停实心 (更高级的赛博感) */
-div.stButton > button {
-    background-color: transparent;
-    color: #00FFC8;
-    border: 2px solid #00FFC8; /* 荧光描边 */
-    border-radius: 8px;
-    font-weight: bold;
-    transition: all 0.3s;
+/* 单选按钮样式 */
+stRadio > div {
+    background: white;
+    border-radius: 12px;
+    padding: 10px;
 }
 
-div.stButton > button:hover {
-    background-color: #00FFC8; /* 填满 */
-    color: #0E1117; /* 字变黑 */
-    box-shadow: 0 0 20px rgba(0, 255, 200, 0.6);
+/* 滑块样式 */
+.stSlider > div > div > div {
+    background: #9F7AEA;
 }
 
-/* 6. 修复 st.info/st.success 的文字颜色 */
-.stAlert {
-    background-color: rgba(0, 255, 200, 0.1);
-    color: #FFFFFF;
-    border: 1px solid #00FFC8;
+/* 表格样式 */
+.stDataFrame {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* 隐藏streamlit默认元素 */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem !important;
+    }
+    
+    .nav-container {
+        padding: 8px;
+    }
+    
+    div.stButton > button {
+        font-size: 0.85rem;
+        padding: 10px 16px;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -171,35 +292,32 @@ div.stButton > button:hover {
 # 添加页面顶部锚点
 st.markdown("<div id='top'></div>", unsafe_allow_html=True)
 
-# 2. 侧边栏：控制中心
-with st.sidebar:
-    st.title("🔋 能量控制台")
-    st.info("系统版本: v0.1 Alpha")
-    
-    # 昵称输入（必填）
-    user_name = st.text_input("输入代号 (ID):", "", placeholder="请输入您的昵称")
-    
-    # 昵称验证
-    if not user_name:
-        st.error("⚠️ 请输入昵称后再继续")
-        nickname_valid = False
-    else:
-        st.success(f"欢迎回来, {user_name} 👋")
-        nickname_valid = True
-        
-        # 获取或创建用户
-        user_id = database.get_or_create_user(user_name)
-        st.session_state["user_id"] = user_id
-        st.session_state["nickname"] = user_name
-    
-    st.write("🔧 调试工具")
-    if st.button("清除缓存 (Reset)"):
-        st.cache_data.clear()
-        st.success("内存已释放")
+# 版本信息
+st.markdown("<div class='version-info'>v0.1 Alpha</div>", unsafe_allow_html=True)
 
-# 3. 主界面：赛博标题
-st.title("👾 TCM-BTI：你的赛博体质说明书")
-st.markdown("##### *✨ 科学解码 · 国潮养生 · 寻找你的体质同类*")
+# 3. 主界面：标题
+st.title("🧬 TCM-BTI")
+st.title("你的赛博体质说明书")
+st.markdown("<p class='subtitle'>✨ 61题内测版 预计7-8分钟完成</p>", unsafe_allow_html=True)
+
+
+# 输入ID区域
+st.markdown("<div style='max-width: 500px; margin: 0 auto 30px auto;'>", unsafe_allow_html=True)
+user_name = st.text_input("输入您的代号 (ID):", "", placeholder="请输入您的昵称")
+
+# 昵称验证
+if not user_name:
+    st.error("⚠️ 请输入昵称后再继续")
+    nickname_valid = False
+else:
+    st.success(f"欢迎回来, {user_name} 👋")
+    nickname_valid = True
+    
+    # 获取或创建用户
+    user_id = database.get_or_create_user(user_name)
+    st.session_state["user_id"] = user_id
+    st.session_state["nickname"] = user_name
+st.markdown("</div>", unsafe_allow_html=True)
 
 # 4. 核心功能区 (用 Tabs 分页)
 # 初始化活动标签页
@@ -216,9 +334,8 @@ if "part1_result" not in st.session_state:
 if "part2_result" not in st.session_state:
     st.session_state["part2_result"] = None
 
-tab_names = ["🧬 快速扫描 (28题)", "🏥 卫健委体质 (33题)", "📸 舌象解码 (AI)", "🔮 专属体质报告", "📊 数据管理"]
-
-# 使用 radio 按钮作为标签导航，支持程序化切换
+# 导航按钮区域
+st.markdown("<div class='nav-container'>", unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     if st.button("🧬 体质问卷", use_container_width=True, 
@@ -240,8 +357,7 @@ with col4:
                  type="primary" if st.session_state["active_tab"] == 3 else "secondary"):
         st.session_state["active_tab"] = 3
         st.rerun()
-
-st.divider()
+st.markdown("</div>", unsafe_allow_html=True)
 
 # --- 模块 1: 问卷区 (双盲合并版) ---
 if st.session_state["active_tab"] == 0:
@@ -249,7 +365,7 @@ if st.session_state["active_tab"] == 0:
     
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
-        st.warning("⚠️ 请先在左侧边栏输入您的昵称")
+        st.warning("⚠️ 请先在上方输入您的昵称")
         st.stop()
     
     # 加载两组题目
@@ -354,7 +470,7 @@ elif st.session_state["active_tab"] == 1:
     
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
-        st.warning("⚠️ 请先在左侧边栏输入您的昵称")
+        st.warning("⚠️ 请先在上方输入您的昵称")
         st.stop()
     
     st.warning("⚠️ 请在光线充足环境下拍摄舌象")
@@ -373,7 +489,7 @@ elif st.session_state["active_tab"] == 1:
 elif st.session_state["active_tab"] == 2:
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
-        st.warning("⚠️ 请先在左侧边栏输入您的昵称")
+        st.warning("⚠️ 请先在上方输入您的昵称")
         st.stop()
     
     # 检查是否两部分都已完成
@@ -381,7 +497,7 @@ elif st.session_state["active_tab"] == 2:
     part2_done = st.session_state.get("part2_completed", False)
     
     if not part1_done and not part2_done:
-        st.info("👈 请先在左侧完成【快速扫描(28题)】和【卫健委体质(33题)】以解锁数据")
+        st.info("👈 请先在上方完成【体质问卷】以解锁数据")
         st.stop()
     
     st.header("🔮 您的完整体质报告")
@@ -402,8 +518,8 @@ elif st.session_state["active_tab"] == 2:
             
             # 判词
             st.markdown(f"""
-            <div style="background: rgba(0,255,200,0.1); padding: 10px; border-radius: 8px; border-left: 3px solid #00FFC8;">
-                <p style="color: #00FFC8; font-size: 0.9em; margin: 0;">"{badge['poem']}"</p>
+            <div style="background: linear-gradient(135deg, #E9D8FD 0%, #D6BCFA 100%); padding: 15px; border-radius: 12px; border-left: 4px solid #805AD5;">
+                <p style="color: #553C9A; font-size: 0.95em; margin: 0; font-style: italic;">"{badge['poem']}"</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -419,13 +535,14 @@ elif st.session_state["active_tab"] == 2:
                 theta=categories,
                 fill='toself',
                 name=info['type_name'],
-                line_color='#00FFC8'
+                line_color='#805AD5',
+                fillcolor='rgba(128, 90, 213, 0.3)'
             ))
             fig.update_layout(
                 polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                font_color="white",
+                font_color="#4A5568",
                 margin=dict(l=20, r=20, t=20, b=20),
                 height=300
             )
@@ -533,7 +650,7 @@ elif st.session_state["active_tab"] == 2:
 
 # --- 模块 5: 数据管理区 (管理员专用) ---
 elif st.session_state["active_tab"] == 3:
-    st.header("� 赛博数据中心")
+    st.header("📊 赛博数据中心")
     st.markdown("*管理员专用 - 管理和导出体质数据*")
     
     # 初始化管理员登录状态
@@ -556,7 +673,7 @@ elif st.session_state["active_tab"] == 3:
                 else:
                     st.error("❌ 密码错误")
         
-        st.info("💡 提示：默认密码为 8888，登录后可在设置中修改")
+        st.info("💡 提示：默认密码登录后可在设置中修改")
     
     # 如果已登录，显示数据管理内容
     else:
@@ -617,7 +734,7 @@ elif st.session_state["active_tab"] == 3:
                     go.Bar(
                         x=type_data['type_name'],
                         y=type_data['count'],
-                        marker_color='#00FFC8'
+                        marker_color='#805AD5'
                     )
                 ])
                 fig.update_layout(
@@ -626,7 +743,7 @@ elif st.session_state["active_tab"] == 3:
                     yaxis_title="数量",
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    font_color="white"
+                    font_color="#4A5568"
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 
