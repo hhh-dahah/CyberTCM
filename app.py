@@ -25,12 +25,9 @@ st.set_page_config(
 # --- 16Personalities Style CSS ---
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
-
-/* 全局背景：柔和渐变 */
+/* 全局背景 - 简化渐变 */
 .stApp {
-    background: linear-gradient(135deg, #E8F4F8 0%, #F0F9FF 50%, #E0F2FE 100%);
-    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F0F9FF;
 }
 
 /* 隐藏侧边栏 */
@@ -44,10 +41,9 @@ st.markdown("""
     padding: 20px !important;
 }
 
-/* 标题样式 */
+/* 标题样式 - 使用系统字体 */
 h1 {
     color: #2D3748 !important;
-    font-family: 'Nunito', sans-serif !important;
     font-weight: 800 !important;
     font-size: 2.5rem !important;
     text-align: center;
@@ -56,24 +52,17 @@ h1 {
 
 h2, h3 {
     color: #4A5568 !important;
-    font-family: 'Nunito', sans-serif !important;
     font-weight: 700 !important;
 }
 
 /* 所有p标签文字颜色为黑色 */
-p, .stMarkdown p, [data-testid="stText"] p {
+p, .stMarkdown p {
     color: #1A202C !important;
 }
 
-/* Plotly图表中的数字和文字 - 黑色 */
-.js-plotly-plot .plotly .ytick text,
-.js-plotly-plot .plotly .xtick text,
-.js-plotly-plot .plotly .g-xtitle text,
-.js-plotly-plot .plotly .g-ytitle text,
-.js-plotly-plot .plotly .gtitle,
-.js-plotly-plot .plotly text {
+/* Plotly图表 - 简化选择器 */
+.js-plotly-plot text {
     fill: #1A202C !important;
-    color: #1A202C !important;
 }
 
 /* 问卷选项 - 黑色 */
@@ -89,6 +78,81 @@ p, .stMarkdown p, [data-testid="stText"] p {
 [role="radiogroup"] label {
     font-size: 1rem !important;
     color: #1A202C !important;
+}
+
+/* 自定义单选按钮样式 - 圆角方形风格 */
+[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child {
+    border-radius: 6px !important;
+    border: 2px solid #48BB78 !important;
+    background: white !important;
+    width: 20px !important;
+    height: 20px !important;
+    position: relative !important;
+}
+
+/* 单选按钮内部隐藏默认样式 */
+[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child > div {
+    display: none !important;
+}
+
+/* 单选按钮选中状态 - 绿紫渐变 */
+[data-testid="stRadio"] [data-baseweb="radio"] [aria-checked="true"] > div:first-child,
+[data-testid="stRadio"] [data-baseweb="radio"][aria-checked="true"] > div:first-child {
+    background: linear-gradient(135deg, #48BB78 0%, #805AD5 100%) !important;
+    border-color: #805AD5 !important;
+}
+
+/* 单选按钮选中状态 - 白色小圆点 */
+[data-testid="stRadio"] [data-baseweb="radio"] [aria-checked="true"] > div:first-child::after,
+[data-testid="stRadio"] [data-baseweb="radio"][aria-checked="true"] > div:first-child::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 8px !important;
+    height: 8px !important;
+    background: white !important;
+    border-radius: 50% !important;
+}
+
+/* 单选按钮悬停效果 */
+[data-testid="stRadio"] [data-baseweb="radio"]:hover > div:first-child {
+    border-color: #9F7AEA !important;
+    box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.3) !important;
+}
+
+/* 按钮样式 - 简化 */
+.stButton > button {
+    background: #805AD5 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 50px !important;
+    font-weight: 700 !important;
+    padding: 12px 24px !important;
+}
+
+/* Expander按钮样式 - 简化 */
+[data-testid="stExpander"] details summary {
+    background: #667eea !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+    border: none !important;
+    cursor: pointer !important;
+}
+
+[data-testid="stExpander"] details summary p {
+    color: white !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
+/* Expander展开后的内容区域样式 */
+[data-testid="stExpander"] details[open] {
+    background: #f5f7fa !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+    margin-top: 10px !important;
 }
 
 /* 统计数据卡片数字 */
@@ -297,7 +361,7 @@ st.markdown("<div class='version-info'>v0.1 Alpha</div>", unsafe_allow_html=True
 
 # 3. 主界面：标题
 st.title("🧬 TCM-BTI")
-st.title("你的赛博体质说明书")
+st.title("你的专属体质说明书")
 st.markdown("<p class='subtitle'>✨ 61题内测版 预计7-8分钟完成</p>", unsafe_allow_html=True)
 
 
@@ -388,7 +452,7 @@ if st.session_state["active_tab"] == 0:
             st.write(f"**{question_number}. {row['question']}**")
             st.radio(
                 "请选择程度:", 
-                ["A. 非常符合 (5分)", "B. 比较符合 (4分)", "C. 一般 (3分)", "D. 不太符合 (2分)", "E. 完全不符 (1分)"],
+                ["A. 非常符合", "B. 比较符合", "C. 一般", "D. 不太符合", "E. 完全不符"],
                 key=f"q_{row['id']}",
                 index=2,
                 horizontal=True,
@@ -402,7 +466,7 @@ if st.session_state["active_tab"] == 0:
             st.write(f"**{question_number}. {row['question']}**")
             st.radio(
                 "请选择程度:",
-                ["A. 非常符合 (5分)", "B. 比较符合 (4分)", "C. 一般 (3分)", "D. 不太符合 (2分)", "E. 完全不符 (1分)"],
+                ["A. 非常符合", "B. 比较符合", "C. 一般", "D. 不太符合", "E. 完全不符"],
                 key=f"wjw_q_{row['id']}",
                 index=2,
                 horizontal=True,
@@ -455,7 +519,7 @@ if st.session_state["active_tab"] == 0:
                 st.success("✅ 数据已同步到赛博数据库！")
             
             st.success("✅ 体质评估完成！")
-            st.success("🎉 完整的体质报告已生成！现在回到顶部查看吧！")
+            st.success("🎉 完整的体质报告已生成！现在回到点击体制报告按钮查看吧！")
             
             # 添加回到顶部按钮
             st.markdown("""
@@ -613,7 +677,7 @@ elif st.session_state["active_tab"] == 2:
     
     # --- 详细结果展示 ---
     if part1_done and st.session_state.get("part1_result"):
-        with st.expander("📊 查看八纲辨证详细结果"):
+        with st.expander("📊 点击查看详细结果"):
             res = st.session_state["part1_result"]
             
             # 双向能量条
