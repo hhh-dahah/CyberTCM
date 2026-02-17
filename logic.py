@@ -106,15 +106,20 @@ def calculate_results(session_state, df_questions, df_types):
     raw_scores = {dim: 0 for dim in dimensions}
     
     # 3. 计算原始分
+    options = ["A. 非常符合", "B. 比较符合", "C. 一般", "D. 不太符合", "E. 完全不符"]
     for index, row in df_questions.iterrows():
         qid = row['id']
         dim = row['dimension']
         ans_str = user_answers.get(f"q_{qid}")
         if ans_str:
             try:
-                # 兼容中文括号和英文括号
-                score_part = ans_str.replace('（', '(').split('(')[1]
-                score = int(score_part.split('分')[0])
+                # 根据选项位置计算分数: A=5分, B=4分, C=3分, D=2分, E=1分
+                if ans_str in options:
+                    score = 5 - options.index(ans_str)
+                else:
+                    # 兼容带分数的格式
+                    score_part = ans_str.replace('（', '(').split('(')[1]
+                    score = int(score_part.split('分')[0])
                 raw_scores[dim] += score
             except:
                 pass
@@ -252,15 +257,22 @@ def calculate_wjw_results(session_state, df_questions):
     # 2. 计算各体质得分
     constitution_scores = {}
     
+    # 选项列表用于计算分数
+    options = ["A. 非常符合", "B. 比较符合", "C. 一般", "D. 不太符合", "E. 完全不符"]
+    
     for constitution, question_ids in WJW_CONSTITUTION_MAP.items():
         total_score = 0
         for qid in question_ids:
             ans_str = user_answers.get(f"wjw_q_{qid}")
             if ans_str:
                 try:
-                    # 提取分数 (1-5分)
-                    score_part = ans_str.replace('（', '(').split('(')[1]
-                    score = int(score_part.split('分')[0])
+                    # 根据选项位置计算分数: A=5分, B=4分, C=3分, D=2分, E=1分
+                    if ans_str in options:
+                        score = 5 - options.index(ans_str)
+                    else:
+                        # 兼容带分数的格式
+                        score_part = ans_str.replace('（', '(').split('(')[1]
+                        score = int(score_part.split('分')[0])
                     
                     # 平和质的反向计分
                     if constitution == '平和质' and qid in PINGHE_REVERSE_SCORES:
