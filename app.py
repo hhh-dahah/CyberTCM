@@ -645,36 +645,6 @@ elif st.session_state["active_tab"] == 2:
     
     st.divider()
     
-    # --- 保存完整数据到数据库 ---
-    if part1_done and part2_done:
-        if st.button("💾 保存完整报告到数据库", type="primary", use_container_width=True):
-            with st.spinner("正在保存数据..."):
-                # 提取两部分答案
-                part1_answers = {}
-                part2_answers = {}
-                for key, value in st.session_state.items():
-                    if key.startswith("q_"):
-                        part1_answers[key] = value
-                    elif key.startswith("wjw_q_"):
-                        part2_answers[key] = value
-                
-                # 收集所有原始答案
-                raw_answers = {}
-                for key, value in st.session_state.items():
-                    if key.startswith("q_") or key.startswith("wjw_q_"):
-                        raw_answers[key] = value
-                
-                # 保存完整数据
-                database.save_complete_questionnaire(
-                    user_id=st.session_state["user_id"],
-                    part1_result=st.session_state["part1_result"],
-                    part2_result=st.session_state["part2_result"],
-                    part1_answers=part1_answers,
-                    part2_answers=part2_answers,
-                    raw_answers=raw_answers
-                )
-                st.success("✅ 完整报告已保存到数据库！")
-    
     # --- 详细结果展示 ---
     if part1_done and st.session_state.get("part1_result"):
         with st.expander("📊 点击查看详细结果"):
