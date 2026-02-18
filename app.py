@@ -363,6 +363,17 @@ header {visibility: hidden;}
         font-size: 0.85rem;
         padding: 10px 16px;
     }
+    
+    /* 手机端问卷题目文字放大 */
+    [data-testid="stRadio"] label {
+        font-size: 1.2rem !important;
+    }
+    
+    /* 手机端问题标题文字放大 */
+    .stMarkdown p {
+        font-size: 1.1rem !important;
+        line-height: 1.6 !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
