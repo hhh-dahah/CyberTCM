@@ -80,46 +80,60 @@ p, .stMarkdown p {
     color: #1A202C !important;
 }
 
-/* 自定义单选按钮样式 - 圆角方形风格 */
-[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child {
-    border-radius: 6px !important;
-    border: 2px solid #48BB78 !important;
-    background: white !important;
+/* 自定义单选按钮样式 - 简洁风格 */
+/* 强制覆盖所有默认样式 */
+[data-testid="stRadio"] {
+    all: unset !important;
+    display: block !important;
+}
+
+/* 单选按钮容器 */
+[data-testid="stRadio"] > div {
+    all: unset !important;
+    display: flex !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+}
+
+/* 单个选项 */
+[data-testid="stRadio"] > div > div {
+    all: unset !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+}
+
+/* 单选按钮本身 - 未选中状态 */
+[data-testid="stRadio"] > div > div > div {
+    all: unset !important;
+    display: inline-block !important;
     width: 20px !important;
     height: 20px !important;
-    position: relative !important;
-}
-
-/* 单选按钮内部隐藏默认样式 */
-[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child > div {
-    display: none !important;
-}
-
-/* 单选按钮选中状态 - 绿紫渐变 */
-[data-testid="stRadio"] [data-baseweb="radio"] [aria-checked="true"] > div:first-child,
-[data-testid="stRadio"] [data-baseweb="radio"][aria-checked="true"] > div:first-child {
-    background: linear-gradient(135deg, #48BB78 0%, #805AD5 100%) !important;
-    border-color: #805AD5 !important;
-}
-
-/* 单选按钮选中状态 - 白色小圆点 */
-[data-testid="stRadio"] [data-baseweb="radio"] [aria-checked="true"] > div:first-child::after,
-[data-testid="stRadio"] [data-baseweb="radio"][aria-checked="true"] > div:first-child::after {
-    content: '' !important;
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: 8px !important;
-    height: 8px !important;
-    background: white !important;
+    border: 2px solid #CBD5E0 !important;
     border-radius: 50% !important;
+    background: white !important;
+    position: relative !important;
+    transition: all 0.3s ease !important;
+}
+
+/* 单选按钮选中状态 */
+[data-testid="stRadio"] > div > div[aria-checked="true"] > div {
+    background: #48BB78 !important;
+    border-color: #48BB78 !important;
 }
 
 /* 单选按钮悬停效果 */
-[data-testid="stRadio"] [data-baseweb="radio"]:hover > div:first-child {
-    border-color: #9F7AEA !important;
-    box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.3) !important;
+[data-testid="stRadio"] > div > div:hover > div {
+    border-color: #48BB78 !important;
+}
+
+/* 标签样式 */
+[data-testid="stRadio"] > div > div > label {
+    all: unset !important;
+    font-size: 1rem !important;
+    color: #1A202C !important;
+    cursor: pointer !important;
 }
 
 /* 按钮样式 - 简化 */
@@ -357,21 +371,21 @@ header {visibility: hidden;}
 st.markdown("<div id='top'></div>", unsafe_allow_html=True)
 
 # 版本信息
-st.markdown("<div class='version-info'>v0.1 Alpha</div>", unsafe_allow_html=True)
+st.markdown("<div class='version-info'>v1.0 Alpha</div>", unsafe_allow_html=True)
 
 # 3. 主界面：标题
-st.title("🧬 TCM-BTI")
+st.title("🧬 PBTI")
 st.title("你的专属体质说明书")
-st.markdown("<p class='subtitle'>✨ 61题内测版 预计7-8分钟完成</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>✨ 61题内测版 预计5-8分钟完成</p>", unsafe_allow_html=True)
 
 
 # 输入ID区域
 st.markdown("<div style='max-width: 500px; margin: 0 auto 30px auto;'>", unsafe_allow_html=True)
-user_name = st.text_input("输入您的代号 (ID):", "", placeholder="请输入您的昵称")
+user_name = st.text_input("输入您的代号 (ID):", "", placeholder="输入昵称后点击空白处继续")
 
 # 昵称验证
 if not user_name:
-    st.error("⚠️ 请输入昵称后再继续")
+    st.error("⚠️ 输入昵称后点击空白处能查看问卷")
     nickname_valid = False
 else:
     st.success(f"欢迎回来, {user_name} 👋")
@@ -442,7 +456,8 @@ if st.session_state["active_tab"] == 0:
     
     # 合并题目（不告诉用户来源）
     total_questions = len(df_questions) + len(df_wjw)
-    st.info(f"📋 共 {total_questions} 道题目，请根据您的实际情况选择")
+    st.info(f"📋 共 {total_questions} 道题目，内设逻辑判断 乱选可能导致全部数据作废")
+    st.info(f"📋 温馨提示：问卷初始默认选C 点击选项可改变选择")
     
     # 创建合并表单
     with st.form("combined_quiz_form"):
@@ -479,7 +494,7 @@ if st.session_state["active_tab"] == 0:
     
     if submitted:
         with st.spinner("正在分析您的体质数据..."):
-            # 1. 计算八纲辨证结果
+            # 1. 计算PBTI体质结果
             df_questions, df_types = logic.load_data()
             result_part1 = logic.calculate_results(st.session_state, df_questions, df_types)
             st.session_state["part1_result"] = result_part1
@@ -516,10 +531,10 @@ if st.session_state["active_tab"] == 0:
                     raw_answers=raw_answers
                 )
                 
-                st.success("✅ 数据已同步到赛博数据库！")
+                # st.success("✅ 数据已同步到赛博数据库！")
             
-            st.success("✅ 体质评估完成！")
-            st.success("🎉 完整的体质报告已生成！现在回到点击体制报告按钮查看吧！")
+            st.success("✅ 体质评估完成！感谢您对健康科研事业的贡献！😆")
+            st.success("🎉 完整的体质报告已生成！现在回到点击‘体质报告’ 按钮查看吧！")
             
             # 添加回到顶部按钮
             st.markdown("""
@@ -530,7 +545,7 @@ if st.session_state["active_tab"] == 0:
 
 # --- 模块 2: 视觉区 ---
 elif st.session_state["active_tab"] == 1:
-    st.header("第三阶段: 生物特征识别")
+    st.header("第三阶段: 生物特征识别 (功能尚未完善 请跳过该部分)")
     
     # 检查昵称是否已输入
     if 'nickname_valid' not in locals() or not nickname_valid:
@@ -571,7 +586,7 @@ elif st.session_state["active_tab"] == 2:
     
     # --- 第一部分：八纲辨证体质结果 ---
     with col_part1:
-        st.subheader("🧬 八纲辨证体质")
+        st.subheader("🧬 PBTI体质（实验中）")
         
         if part1_done and st.session_state.get("part1_result"):
             res = st.session_state["part1_result"]
@@ -613,7 +628,7 @@ elif st.session_state["active_tab"] == 2:
             st.plotly_chart(fig, use_container_width=True)
             
         else:
-            st.warning("⚠️ 尚未完成八纲辨证体质评估")
+            st.warning("⚠️ 尚未完成PBTI体质评估")
             if st.button("🧬 去完成28题评估", key="goto_part1"):
                 st.session_state["active_tab"] = 0
                 st.rerun()
@@ -651,7 +666,7 @@ elif st.session_state["active_tab"] == 2:
             res = st.session_state["part1_result"]
             
             # 双向能量条
-            st.write("**⚡ 能量对抗监测**")
+            st.write("**⚡ 体质偏颇监测**")
             for bar in res["energy_bars"]:
                 st.write(f"{bar['left']} ⟵ VS ⟶ {bar['right']}")
                 st.slider(
