@@ -392,38 +392,52 @@ if st.session_state["current_page"] == "main":
     # 使用列布局创建右上角动态人物区域
     header_cols = st.columns([3, 1])
     with header_cols[1]:
-        # 动态人物和按钮区域
-        st.markdown("""
+        # 使用st.image显示GIF动图（确保动画播放）
+        import base64
+        with open("assets/doro.gif", "rb") as f:
+            gif_data = f.read()
+        gif_base64 = base64.b64encode(gif_data).decode()
+        
+        # GIF图片区域 - 长方形，完整显示
+        st.markdown(f"""
         <style>
-        .mascot-wrapper {
+        .gif-wrapper {{
             display: flex;
             flex-direction: column;
             align-items: center;
-            cursor: pointer;
             padding: 5px;
-        }
-        .mascot-gif {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            border: 4px dashed rgba(255,255,255,0.6);
+        }}
+        .gif-container {{
+            width: auto;
+            height: auto;
+            max-width: 150px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 4px dashed rgba(102, 126, 234, 0.6);
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
             animation: mascot-bounce 2s ease-in-out infinite;
             margin: 0 auto;
-        }
-        @keyframes mascot-bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 4px;
+        }}
+        .gif-container img {{
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            display: block;
+        }}
+        @keyframes mascot-bounce {{
+            0%, 100% {{ transform: translateY(0); }}
+            50% {{ transform: translateY(-10px); }}
+        }}
         </style>
-        <div class="mascot-wrapper">
-            <div class="mascot-gif" title="点击加入我们">
-                🎭
+        <div class="gif-wrapper">
+            <div class="gif-container" title="点击加入我们">
+                <img src="data:image/gif;base64,{gif_base64}" alt="点击加入我们">
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -498,8 +512,10 @@ if st.session_state["current_page"] == "main":
     if "part2_result" not in st.session_state:
         st.session_state["part2_result"] = None
 
-    # 导航按钮区域
+    # 导航按钮区域 - 分两行显示
     st.markdown("<div class='nav-container'>", unsafe_allow_html=True)
+    
+    # 第一行：4个主要功能按钮
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if st.button("🧬 体质问卷", use_container_width=True, 
@@ -521,6 +537,15 @@ if st.session_state["current_page"] == "main":
                      type="primary" if st.session_state["active_tab"] == 3 else "secondary"):
             st.session_state["active_tab"] = 3
             st.rerun()
+    
+    # 第二行：加入我们按钮（居中显示）
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+    col_center = st.columns([1, 2, 1])[1]
+    with col_center:
+        if st.button("🎉 加入我们", use_container_width=True, type="secondary"):
+            st.session_state["current_page"] = "join_us"
+            st.rerun()
+    
     st.markdown("</div>", unsafe_allow_html=True)
 
     # --- 模块 1: 问卷区 (双盲合并版) ---
