@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Database
+cybertcm.db
+
+# Export files
+# 注意：保留 database1.xlsx 因为它包含卫健委题库
+cybertcm_export.xlsx
+cybertcm_export.csv
+*.csv
+
+# Excel temporary files
+~$*.xlsx
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

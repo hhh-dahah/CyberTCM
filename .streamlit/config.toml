@@ -1,0 +1,10 @@
+[theme]
+primaryColor = "#00FFC8"      # 荧光青 (核心主色，最亮眼的那个绿)
+backgroundColor = "#0E1117"   # 深空黑 (Streamlit 原生暗色，最稳)
+secondaryBackgroundColor = "#1A1C24" # 侧边栏深灰
+textColor = "#FFFFFF"         # 纯白文字 (对比度最高)
+font = "sans serif"           # 无衬线体 (现代感)
+
+[server]
+headless = true
+enableCORS = false
