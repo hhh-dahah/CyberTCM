@@ -7,6 +7,26 @@ import os # <--- 【修改点1】引入os模块，用于检查本地图片是否
 import database # 引入数据库操作模块
 import pandas as pd
 
+from database import (
+    init_db, get_or_create_user, save_complete_questionnaire,
+    verify_admin_password, update_admin_password,
+    get_statistics, search_questionnaires, export_to_excel
+)
+
+# # 注释掉旧的 SQLite 导入
+# # from database import (
+# #     init_db, get_or_create_user, save_complete_questionnaire,
+# #     verify_admin_password, update_admin_password,
+# #     get_statistics, search_questionnaires, export_to_excel
+# # )
+
+# # 使用新的 Supabase 导入
+# from database_supabase import (
+#     init_db, get_or_create_user, save_complete_questionnaire,
+#     verify_admin_password, update_admin_password,
+#     get_statistics, search_questionnaires, export_to_excel
+# )
+
 # 兼容性处理：旧版本 streamlit 使用 experimental_rerun
 if not hasattr(st, 'rerun'):
     st.rerun = st.experimental_rerun
