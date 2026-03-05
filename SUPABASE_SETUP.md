@@ -1,7 +1,5 @@
 # Supabase 数据库迁移指南
 
-本指南将帮助你将 CyberTCM 项目从 SQLite 迁移到 Supabase。
-
 ---
 
 ## 第一步：创建 Supabase 项目

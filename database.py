@@ -579,8 +579,8 @@ def get_all_questionnaires(limit=None, offset=0):
         c = conn.cursor()
         
         query = '''
-        SELECT q.id, u.nickname, q.type_code, q.type_name, q.created_at
-        FROM questionnaires q
+        SELECT q.id, u.nickname, q.bagang_type_code, q.bagang_type_name, q.created_at
+        FROM complete_questionnaires q
         JOIN users u ON q.user_id = u.id
         ORDER BY q.created_at DESC
         '''
@@ -618,14 +618,14 @@ def get_statistics():
         total_users = c.fetchone()[0]
         
         # 总问卷数
-        c.execute('SELECT COUNT(*) FROM questionnaires')
+        c.execute('SELECT COUNT(*) FROM complete_questionnaires')
         total_questionnaires = c.fetchone()[0]
         
         # 体质类型分布
         c.execute('''
-        SELECT type_code, type_name, COUNT(*) as count
-        FROM questionnaires
-        GROUP BY type_code
+        SELECT bagang_type_code, bagang_type_name, COUNT(*) as count
+        FROM complete_questionnaires
+        GROUP BY bagang_type_code
         ORDER BY count DESC
         ''')
         
@@ -640,7 +640,7 @@ def get_statistics():
         # 今日新增
         today = datetime.now().strftime('%Y-%m-%d')
         c.execute('''
-        SELECT COUNT(*) FROM questionnaires
+        SELECT COUNT(*) FROM complete_questionnaires
         WHERE DATE(created_at) = ?
         ''', (today,))
         today_count = c.fetchone()[0]
@@ -670,8 +670,8 @@ def export_to_csv(filename='cybertcm_export.csv'):
         
         # 查询所有问卷数据
         c.execute('''
-        SELECT q.id, u.nickname, q.type_code, q.type_name, q.radar_data, q.created_at
-        FROM questionnaires q
+        SELECT q.id, u.nickname, q.bagang_type_code, q.bagang_type_name, q.created_at
+        FROM complete_questionnaires q
         JOIN users u ON q.user_id = u.id
         ORDER BY q.created_at DESC
         ''')
@@ -679,7 +679,7 @@ def export_to_csv(filename='cybertcm_export.csv'):
         with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
             # 写入表头
-            writer.writerow(['ID', '用户昵称', '体质代码', '体质名称', '雷达数据', '提交时间'])
+            writer.writerow(['ID', '用户昵称', '体质代码', '体质名称', '提交时间'])
             
             # 写入数据
             for row in c.fetchall():
@@ -688,8 +688,7 @@ def export_to_csv(filename='cybertcm_export.csv'):
                     row[1],
                     row[2],
                     row[3],
-                    row[4],
-                    row[5]
+                    row[4]
                 ])
     
     return filename
@@ -857,8 +856,8 @@ def search_questionnaires(nickname=None, type_code=None, start_date=None, end_da
         c = conn.cursor()
         
         query = '''
-        SELECT q.id, u.nickname, q.type_code, q.type_name, q.created_at
-        FROM questionnaires q
+        SELECT q.id, u.nickname, q.bagang_type_code, q.bagang_type_name, q.created_at
+        FROM complete_questionnaires q
         JOIN users u ON q.user_id = u.id
         WHERE 1=1
         '''
@@ -869,7 +868,7 @@ def search_questionnaires(nickname=None, type_code=None, start_date=None, end_da
             params.append(f'%{nickname}%')
         
         if type_code:
-            query += ' AND q.type_code = ?'
+            query += ' AND q.bagang_type_code = ?'
             params.append(type_code)
         
         if start_date:
