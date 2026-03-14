@@ -7,18 +7,32 @@ from datetime import datetime
 
 load_dotenv()
 
+# 尝试从 os.getenv 读取（本地开发）
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
+# 如果 os.getenv 没有读到，尝试从 st.secrets 读取（Streamlit Cloud）
+if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+    try:
+        import streamlit as st
+        DB_USER = st.secrets.get("DB_USER", DB_USER)
+        DB_PASSWORD = st.secrets.get("DB_PASSWORD", DB_PASSWORD)
+        DB_HOST = st.secrets.get("DB_HOST", DB_HOST)
+        DB_PORT = st.secrets.get("DB_PORT", DB_PORT)
+        DB_NAME = st.secrets.get("DB_NAME", DB_NAME)
+        print("[DB DEBUG] 使用 st.secrets 读取配置")
+    except Exception as e:
+        print(f"[DB DEBUG] 读取 st.secrets 失败: {e}")
+
 # 调试信息
 print(f"[DB DEBUG] DB_USER: {DB_USER}")
 print(f"[DB DEBUG] DB_HOST: {DB_HOST}")
 print(f"[DB DEBUG] DB_PORT: {DB_PORT}")
 print(f"[DB DEBUG] DB_NAME: {DB_NAME}")
-print(f"[DB DEBUG] DB_PASSWORD is set: {DB_PASSWORD is not None and len(DB_PASSWORD) > 0}")
+print(f"[DB DEBUG] DB_PASSWORD is set: {DB_PASSWORD is not None and len(str(DB_PASSWORD)) > 0}")
 
 def get_connection():
     """获取数据库连接"""
