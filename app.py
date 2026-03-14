@@ -4,14 +4,14 @@ import logic # 引入我们的大脑
 import plotly.graph_objects as go  # 记得在文件最上面加这一行
 
 import os # <--- 【修改点1】引入os模块，用于检查本地图片是否存在
-import database # 引入数据库操作模块
 import pandas as pd
 
 # 使用 PostgreSQL 数据库（Supabase）
 from database_postgres import (
     init_db, get_or_create_user, save_complete_questionnaire,
     verify_admin_password, update_admin_password,
-    get_statistics, search_questionnaires, export_to_excel
+    get_statistics, search_questionnaires, export_to_excel,
+    get_all_questionnaires
 )
 
 # # 注释掉旧的 SQLite 导入
@@ -51,7 +51,7 @@ def load_data_cached():
 
 # ==================== 性能优化：延迟初始化数据库 ====================
 if "db_initialized" not in st.session_state:
-    database.init_db()
+    init_db()
     st.session_state["db_initialized"] = True
 
 # 1. 页面基础设置 (必须是第一行)
@@ -513,7 +513,7 @@ if st.session_state["current_page"] == "main":
         nickname_valid = True
         
         # 获取或创建用户
-        user_id = database.get_or_create_user(user_name)
+        user_id = get_or_create_user(user_name)
         st.session_state["user_id"] = user_id
         st.session_state["nickname"] = user_name
     st.markdown("</div>", unsafe_allow_html=True)
@@ -654,7 +654,7 @@ if st.session_state["current_page"] == "main":
                             raw_answers[key] = value
                     
                     # 保存完整数据
-                    database.save_complete_questionnaire(
+                    save_complete_questionnaire(
                         user_id=user_id,
                         part1_result=result_part1,
                         part2_result=result_part2,
@@ -847,7 +847,7 @@ if st.session_state["current_page"] == "main":
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("🔓 登录", type="primary"):
-                    if database.verify_admin_password(admin_password):
+                    if verify_admin_password(admin_password):
                         st.session_state["admin_logged_in"] = True
                         st.success("✅ 登录成功！")
                         st.rerun()
@@ -878,7 +878,7 @@ if st.session_state["current_page"] == "main":
                         elif len(new_pwd) < 4:
                             st.error("❌ 新密码长度至少为4位")
                         else:
-                            success, message = database.update_admin_password(current_pwd, new_pwd)
+                            success, message = update_admin_password(current_pwd, new_pwd)
                             if success:
                                 st.success(f"✅ {message}")
                                 st.info("请使用新密码重新登录")
@@ -893,7 +893,7 @@ if st.session_state["current_page"] == "main":
             st.subheader("📈 数据概览")
             
             try:
-                stats = database.get_statistics()
+                stats = get_statistics()
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -953,7 +953,7 @@ if st.session_state["current_page"] == "main":
                     
                     type_code = None if search_type == "全部" else search_type
                     
-                    results = database.search_questionnaires(
+                    results = search_questionnaires(
                         nickname=search_nickname if search_nickname else None,
                         type_code=type_code,
                         start_date=start_date,
@@ -973,12 +973,13 @@ if st.session_state["current_page"] == "main":
                 export_col1, export_col2 = st.columns(2)
                 with export_col1:
                     if st.button("📄 导出为 CSV"):
-                        filename = database.export_to_csv()
-                        st.success(f"✅ 数据已导出到: {filename}")
-                        
-                        # 提供下载链接
-                        with open(filename, 'rb') as f:
-                            st.download_button(
+                        st.info("💡 CSV导出功能暂未实现，请使用Excel导出")
+                        # filename = export_to_csv()
+                        # st.success(f"✅ 数据已导出到: {filename}")
+                        # 
+                        # # 提供下载链接
+                        # with open(filename, 'rb') as f:
+                        #     st.download_button(
                                 label="⬇️ 下载 CSV 文件",
                                 data=f,
                                 file_name=filename,
@@ -987,7 +988,7 @@ if st.session_state["current_page"] == "main":
                 
                 with export_col2:
                     if st.button("📊 导出为 Excel"):
-                        filename = database.export_to_excel()
+                        filename = export_to_excel()
                         if filename:
                             st.success(f"✅ 数据已导出到: {filename}")
                             
@@ -1005,7 +1006,7 @@ if st.session_state["current_page"] == "main":
                 # 显示所有问卷数据
                 st.subheader("📋 所有问卷记录")
                 
-                all_questionnaires = database.get_all_questionnaires(limit=100)
+                all_questionnaires = get_all_questionnaires(limit=100)
                 if all_questionnaires:
                     df = pd.DataFrame(all_questionnaires)
                     st.dataframe(df, use_container_width=True)
@@ -1014,13 +1015,7 @@ if st.session_state["current_page"] == "main":
                 
                 # 数据库信息
                 st.subheader("🗄️ 数据库信息")
-                
-                db_info = database.get_database_info()
-                if db_info:
-                    st.write(f"**数据库文件**: {db_info['file_path']}")
-                    st.write(f"**文件大小**: {db_info['file_size']}")
-                    st.write(f"**数据表**: {', '.join(db_info['tables'])}")
-                else:
+                st.info("💡 使用 Supabase PostgreSQL 云数据库")
                     st.info("数据库文件不存在")
                     
             except Exception as e:

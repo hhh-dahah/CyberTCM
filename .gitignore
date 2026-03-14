@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 
 # Environment variables
-.env
+# .env  # 允许 .env 上传到 GitHub
 
 # Database
 cybertcm.db
