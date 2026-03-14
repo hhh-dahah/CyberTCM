@@ -135,7 +135,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+# .env  # 允许 .env 上传到 GitHub
 .envrc
 .venv
 env/
