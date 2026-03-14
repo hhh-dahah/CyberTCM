@@ -27,6 +27,15 @@ if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
     except Exception as e:
         print(f"[DB DEBUG] 读取 st.secrets 失败: {e}")
 
+# 如果还是读不到，使用硬编码配置（仅用于测试）
+if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+    print("[DB DEBUG] 使用硬编码配置")
+    DB_USER = "postgres"
+    DB_PASSWORD = "xiaweiran123"
+    DB_HOST = "db.wchxmglwsnphogivcbgu.supabase.co"
+    DB_PORT = "5432"
+    DB_NAME = "postgres"
+
 # 调试信息
 print(f"[DB DEBUG] DB_USER: {DB_USER}")
 print(f"[DB DEBUG] DB_HOST: {DB_HOST}")
