@@ -654,16 +654,20 @@ if st.session_state["current_page"] == "main":
                             raw_answers[key] = value
                     
                     # 保存完整数据
-                    save_complete_questionnaire(
-                        user_id=user_id,
-                        part1_result=result_part1,
-                        part2_result=result_part2,
-                        part1_answers=part1_answers,
-                        part2_answers=part2_answers,
-                        raw_answers=raw_answers
-                    )
-                    
-                    # st.success("✅ 数据已同步到赛博数据库！")
+                    try:
+                        save_complete_questionnaire(
+                            user_id=user_id,
+                            part1_result=result_part1,
+                            part2_result=result_part2,
+                            part1_answers=part1_answers,
+                            part2_answers=part2_answers,
+                            raw_answers=raw_answers
+                        )
+                        st.success("✅ 数据已同步到赛博数据库！")
+                    except Exception as e:
+                        st.error(f"❌ 数据保存失败: {e}")
+                        import traceback
+                        st.error(traceback.format_exc())
                 
                 st.success("✅ 体质评估完成！感谢您对健康科研事业的贡献！😆")
                 st.success("🎉 完整的体质报告已生成！现在回到点击'体质报告' 按钮查看吧！")
@@ -980,11 +984,11 @@ if st.session_state["current_page"] == "main":
                         # # 提供下载链接
                         # with open(filename, 'rb') as f:
                         #     st.download_button(
-                                label="⬇️ 下载 CSV 文件",
-                                data=f,
-                                file_name=filename,
-                                mime='text/csv'
-                            )
+                        #         label="⬇️ 下载 CSV 文件",
+                        #         data=f,
+                        #         file_name=filename,
+                        #         mime='text/csv'
+                        #     )
                 
                 with export_col2:
                     if st.button("📊 导出为 Excel"):
@@ -1016,7 +1020,6 @@ if st.session_state["current_page"] == "main":
                 # 数据库信息
                 st.subheader("🗄️ 数据库信息")
                 st.info("💡 使用 Supabase PostgreSQL 云数据库")
-                    st.info("数据库文件不存在")
                     
             except Exception as e:
                 st.error(f"❌ 数据加载失败: {e}")
