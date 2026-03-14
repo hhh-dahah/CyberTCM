@@ -13,8 +13,17 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
+# 调试信息
+print(f"[DB DEBUG] DB_USER: {DB_USER}")
+print(f"[DB DEBUG] DB_HOST: {DB_HOST}")
+print(f"[DB DEBUG] DB_PORT: {DB_PORT}")
+print(f"[DB DEBUG] DB_NAME: {DB_NAME}")
+print(f"[DB DEBUG] DB_PASSWORD is set: {DB_PASSWORD is not None and len(DB_PASSWORD) > 0}")
+
 def get_connection():
     """获取数据库连接"""
+    if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+        raise ValueError(f"数据库配置缺失: USER={DB_USER}, HOST={DB_HOST}, PORT={DB_PORT}, NAME={DB_NAME}, PASSWORD={'已设置' if DB_PASSWORD else '未设置'}")
     return psycopg2.connect(
         user=DB_USER,
         password=DB_PASSWORD,
