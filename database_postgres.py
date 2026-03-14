@@ -42,6 +42,8 @@ DB_NAME = db_config['DB_NAME']
 
 def get_connection():
     """获取数据库连接"""
+    if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+        raise ValueError(f"数据库配置缺失: USER={DB_USER}, HOST={DB_HOST}, PORT={DB_PORT}, NAME={DB_NAME}, PASSWORD={'已设置' if DB_PASSWORD else '未设置'}")
     return psycopg2.connect(
         user=DB_USER,
         password=DB_PASSWORD,
