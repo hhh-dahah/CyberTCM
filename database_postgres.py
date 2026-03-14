@@ -7,32 +7,66 @@ from datetime import datetime
 # 兼容 Streamlit Cloud 和本地环境的配置读取
 def get_db_config():
     """获取数据库配置，支持 Streamlit Secrets 和环境变量"""
-    try:
-        # 尝试从 Streamlit Secrets 读取（Streamlit Cloud 环境）
-        import streamlit as st
-        if hasattr(st, 'secrets') and 'DB_HOST' in st.secrets:
-            return {
-                'DB_USER': st.secrets['DB_USER'],
-                'DB_PASSWORD': st.secrets['DB_PASSWORD'],
-                'DB_HOST': st.secrets['DB_HOST'],
-                'DB_PORT': st.secrets['DB_PORT'],
-                'DB_NAME': st.secrets['DB_NAME']
-            }
-    except (ImportError, KeyError, AttributeError):
-        pass
+    print("[DB DEBUG] 开始加载数据库配置...")
     
-    # 从环境变量读取（本地环境或其他部署平台）
+    # 优先尝试从 Streamlit Secrets 读取（Streamlit Cloud 环境）
+    try:
+        import streamlit as st
+        print(f"[DB DEBUG] Streamlit secrets 可用：{hasattr(st, 'secrets')}")
+        
+        if hasattr(st, 'secrets'):
+            # 检查所有必需的键
+            required_keys = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_NAME']
+            available_keys = [k for k in required_keys if k in st.secrets]
+            missing_keys = [k for k in required_keys if k not in st.secrets]
+            
+            print(f"[DB DEBUG] Secrets 中可用的键：{available_keys}")
+            if missing_keys:
+                print(f"[DB DEBUG] Secrets 中缺少的键：{missing_keys}")
+            
+            if all(k in st.secrets for k in required_keys):
+                config = {
+                    'DB_USER': st.secrets['DB_USER'],
+                    'DB_PASSWORD': st.secrets['DB_PASSWORD'],
+                    'DB_HOST': st.secrets['DB_HOST'],
+                    'DB_PORT': st.secrets['DB_PORT'],
+                    'DB_NAME': st.secrets['DB_NAME']
+                }
+                print(f"[DB DEBUG] ✓ 成功从 Streamlit Secrets 加载配置")
+                print(f"[DB DEBUG]   HOST: {config['DB_HOST']}")
+                print(f"[DB DEBUG]   PORT: {config['DB_PORT']}")
+                print(f"[DB DEBUG]   USER: {config['DB_USER']}")
+                print(f"[DB DEBUG]   DATABASE: {config['DB_NAME']}")
+                print(f"[DB DEBUG]   PASSWORD 长度：{len(str(config['DB_PASSWORD']))}")
+                return config
+    except Exception as e:
+        print(f"[DB DEBUG] ✗ 读取 Secrets 失败：{e}")
+        import traceback
+        print(f"[DB DEBUG] {traceback.format_exc()}")
+    
+    # 回退到环境变量（本地开发或其他平台）
+    print("[DB DEBUG] 回退到环境变量...")
     from dotenv import load_dotenv
     load_dotenv()
-    return {
+    config = {
         'DB_USER': os.getenv("DB_USER"),
         'DB_PASSWORD': os.getenv("DB_PASSWORD"),
         'DB_HOST': os.getenv("DB_HOST"),
         'DB_PORT': os.getenv("DB_PORT"),
         'DB_NAME': os.getenv("DB_NAME")
     }
+    
+    print(f"[DB DEBUG] 环境变量配置:")
+    for key, value in config.items():
+        if key == 'DB_PASSWORD':
+            print(f"[DB DEBUG]   {key}: {'已设置' if value else '未设置'}")
+        else:
+            print(f"[DB DEBUG]   {key}: {value}")
+    
+    return config
 
 # 获取配置
+print("[DB DEBUG] 模块初始化，加载数据库配置...")
 db_config = get_db_config()
 DB_USER = db_config['DB_USER']
 DB_PASSWORD = db_config['DB_PASSWORD']
@@ -42,15 +76,40 @@ DB_NAME = db_config['DB_NAME']
 
 def get_connection():
     """获取数据库连接"""
+    print(f"[DB DEBUG] 尝试连接数据库...")
+    print(f"[DB DEBUG]   Host: {DB_HOST}:{DB_PORT}")
+    print(f"[DB DEBUG]   Database: {DB_NAME}")
+    print(f"[DB DEBUG]   User: {DB_USER}")
+    
     if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
-        raise ValueError(f"数据库配置缺失: USER={DB_USER}, HOST={DB_HOST}, PORT={DB_PORT}, NAME={DB_NAME}, PASSWORD={'已设置' if DB_PASSWORD else '未设置'}")
-    return psycopg2.connect(
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT,
-        dbname=DB_NAME
-    )
+        missing = []
+        if not DB_USER: missing.append('USER')
+        if not DB_PASSWORD: missing.append('PASSWORD')
+        if not DB_HOST: missing.append('HOST')
+        if not DB_PORT: missing.append('PORT')
+        if not DB_NAME: missing.append('NAME')
+        raise ValueError(f"数据库配置缺失：{', '.join(missing)}")
+    
+    try:
+        conn = psycopg2.connect(
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT,
+            dbname=DB_NAME
+        )
+        print(f"[DB DEBUG] ✓ 数据库连接成功！")
+        return conn
+    except psycopg2.OperationalError as e:
+        print(f"[DB DEBUG] ✗ 数据库连接失败！")
+        print(f"[DB DEBUG]   错误类型：psycopg2.OperationalError")
+        print(f"[DB DEBUG]   错误详情：{e}")
+        print(f"[DB DEBUG] 连接参数:")
+        print(f"[DB DEBUG]   Host: {DB_HOST}:{DB_PORT}")
+        print(f"[DB DEBUG]   Database: {DB_NAME}")
+        print(f"[DB DEBUG]   User: {DB_USER}")
+        print(f"[DB DEBUG]   Password: {'*' * len(str(DB_PASSWORD))}")
+        raise
 
 def init_db():
     """初始化数据库连接（创建表结构）"""
