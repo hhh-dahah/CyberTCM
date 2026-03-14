@@ -2,16 +2,43 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import json
 import os
-from dotenv import load_dotenv
 from datetime import datetime
 
-load_dotenv()
+# 兼容 Streamlit Cloud 和本地环境的配置读取
+def get_db_config():
+    """获取数据库配置，支持 Streamlit Secrets 和环境变量"""
+    try:
+        # 尝试从 Streamlit Secrets 读取（Streamlit Cloud 环境）
+        import streamlit as st
+        if hasattr(st, 'secrets') and 'DB_HOST' in st.secrets:
+            return {
+                'DB_USER': st.secrets['DB_USER'],
+                'DB_PASSWORD': st.secrets['DB_PASSWORD'],
+                'DB_HOST': st.secrets['DB_HOST'],
+                'DB_PORT': st.secrets['DB_PORT'],
+                'DB_NAME': st.secrets['DB_NAME']
+            }
+    except (ImportError, KeyError, AttributeError):
+        pass
+    
+    # 从环境变量读取（本地环境或其他部署平台）
+    from dotenv import load_dotenv
+    load_dotenv()
+    return {
+        'DB_USER': os.getenv("DB_USER"),
+        'DB_PASSWORD': os.getenv("DB_PASSWORD"),
+        'DB_HOST': os.getenv("DB_HOST"),
+        'DB_PORT': os.getenv("DB_PORT"),
+        'DB_NAME': os.getenv("DB_NAME")
+    }
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
+# 获取配置
+db_config = get_db_config()
+DB_USER = db_config['DB_USER']
+DB_PASSWORD = db_config['DB_PASSWORD']
+DB_HOST = db_config['DB_HOST']
+DB_PORT = db_config['DB_PORT']
+DB_NAME = db_config['DB_NAME']
 
 def get_connection():
     """获取数据库连接"""

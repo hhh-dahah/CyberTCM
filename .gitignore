@@ -5,6 +5,10 @@ __pycache__/
 # Environment variables
 .env
 
+# Streamlit Secrets (包含敏感信息，不要提交)
+.streamlit/secrets.toml
+.streamlit/secrets_local.toml
+
 # Database
 cybertcm.db
 
