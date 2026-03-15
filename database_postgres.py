@@ -65,17 +65,27 @@ def get_db_config():
     
     return config
 
-# 获取配置
-print("[DB DEBUG] 模块初始化，加载数据库配置...")
-db_config = get_db_config()
-DB_USER = db_config['DB_USER']
-DB_PASSWORD = db_config['DB_PASSWORD']
-DB_HOST = db_config['DB_HOST']
-DB_PORT = db_config['DB_PORT']
-DB_NAME = db_config['DB_NAME']
+# 数据库配置缓存（延迟加载）
+_db_config = None
+
+def _get_cached_config():
+    """获取缓存的数据库配置，首次调用时加载"""
+    global _db_config
+    if _db_config is None:
+        print("[DB DEBUG] 首次加载数据库配置...")
+        _db_config = get_db_config()
+    return _db_config
 
 def get_connection():
     """获取数据库连接"""
+    db_config = _get_cached_config()
+    
+    DB_USER = db_config['DB_USER']
+    DB_PASSWORD = db_config['DB_PASSWORD']
+    DB_HOST = db_config['DB_HOST']
+    DB_PORT = db_config['DB_PORT']
+    DB_NAME = db_config['DB_NAME']
+    
     print(f"[DB DEBUG] 尝试连接数据库...")
     print(f"[DB DEBUG]   Host: {DB_HOST}:{DB_PORT}")
     print(f"[DB DEBUG]   Database: {DB_NAME}")
