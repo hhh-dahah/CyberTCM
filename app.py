@@ -711,7 +711,27 @@ elif st.session_state.get("current_page") == "main":
             
             # 添加回到顶部按钮
             st.markdown("""
-            <a href="#top" class="back-to-top-btn">⬆ 回到顶部</a>
+            <style>
+            .back-to-top-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                color: #4299E1;
+                text-decoration: none;
+                font-size: 1rem;
+                font-weight: 500;
+                padding: 8px 16px;
+                border-radius: 8px;
+                background: rgba(66, 153, 225, 0.1);
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+            .back-to-top-btn:hover {
+                background: rgba(66, 153, 225, 0.2);
+                color: #3182CE;
+            }
+            </style>
+            <a href="#" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;" class="back-to-top-btn">⬆ 回到顶部</a>
             """, unsafe_allow_html=True)
             
             st.balloons()
@@ -734,7 +754,7 @@ elif st.session_state.get("current_page") == "main":
 
             # 添加回到顶端按钮
             st.markdown("""
-            <a href="#top" class="back-to-top-btn">⬆ 回到顶端</a>
+            <a href="#" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;" class="back-to-top-btn">⬆ 回到顶端</a>
             """, unsafe_allow_html=True)
 
     # --- 模块 4: 结果区 ---
